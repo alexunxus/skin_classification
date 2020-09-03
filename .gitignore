@@ -1,0 +1,5 @@
+libDNPread2.so
+__pycache__/*
+Module/__pycache__/*
+.ipynb_*
+checkpoint/*

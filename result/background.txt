@@ -1,0 +1,32 @@
+Width: 161280 , Height: 59904
+2019-10-30 02.05.46.ndpi: std median 0.017293, mean median  0.928066
+Width: 153600 , Height: 29952
+2019-10-30 02.04.50.ndpi: std median 0.017011, mean median  0.933887
+Width: 157440 , Height: 48384
+2019-10-30 02.09.05.ndpi: std median 0.017313, mean median  0.931987
+Width: 161280 , Height: 55296
+2019-10-30 02.07.27.ndpi: std median 0.017153, mean median  0.930081
+Width: 207360 , Height: 55296
+2019-10-30 02.10.47.ndpi: std median 0.017130, mean median  0.931640
+Width: 157440 , Height: 27648
+2019-10-30 02.14.37.ndpi: std median 0.017057, mean median  0.932848
+Width: 126720 , Height: 46080
+2019-10-30 02.18.03.ndpi: std median 0.017452, mean median  0.926960
+Width: 130560 , Height: 89856
+2019-10-30 02.19.24.ndpi: std median 0.041585, mean median  0.919438
+Width: 172800 , Height: 73728
+2019-10-30 02.15.32.ndpi: std median 0.017457, mean median  0.929266
+Width: 134400 , Height: 69120
+2019-10-30 02.23.07.ndpi: std median 0.017742, mean median  0.925973
+Width: 134400 , Height: 52992
+2019-10-30 01.59.42.ndpi: std median 0.017100, mean median  0.934432
+Width: 142080 , Height: 55296
+350013D01170 - 2019-10-30 02.21.40.ndpi: std median 0.017280, mean median  0.929325
+Width: 142080 , Height: 39168
+2019-10-30 02.01.19.ndpi: std median 0.017285, mean median  0.933391
+Width: 142080 , Height: 59904
+2019-10-30 02.02.21.ndpi: std median 0.017125, mean median  0.933923
+Width: 165120 , Height: 27648
+2019-10-30 02.03.40.ndpi: std median 0.016675, mean median  0.932891
+Width: 161280 , Height: 59904
+2019-10-30 02.05.46.ndpi: std median 0.017293, mean median  0.928066
