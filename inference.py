@@ -81,7 +81,9 @@ for i_item, slide_file in enumerate(datalist):
     PRP = PRP_fn(patch_size=cfg.DATASET.INPUT_SHAPE[0],
                  raw_h=Predictor.get_shape()[1],
                  raw_w=Predictor.get_shape()[0],
-                 blur=0)#cfg.DATASET.BLUR)
+                 blur=0,
+                 # show_probability=True
+                 )#cfg.DATASET.BLUR)
 
     d = PRP.run(prediction=pred_np, result_dir=result_dir, target_folder=target_folder)
     with open(os.path.join(target_folder, "mapping.json"), "w") as f:

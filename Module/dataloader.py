@@ -22,32 +22,60 @@ class SlideDataSet:
                  label_path,
                  frequency_dict,
                  class_map,
+                 patch_size,
                  preproc=None,
                  augment=None,
                  shuffle=True,
-                 patch_size=(512,512),
-                 num_worker=10
+                 num_worker=10,
+                 save_bbox = True
                 ):
         self.slide_path=slide_path
         self.slide_name=slide_name
         self.label_path=label_path
         self.frequency_dict=frequency_dict
         self.class_map=class_map
+        self.patch_size=patch_size
         self.preproc_fn = preproc
         self.augment_fn = augment
         self.shuffle = shuffle
-        self.patch_size=patch_size
         self.num_worker = num_worker
         self.num_class = len(class_map)
+        self.save_bbox = save_bbox
         
         self.cur_pos    = 0
         self.this_slide =Slide_ndpread(os.path.join(slide_path, slide_name), show_info=False) 
         self.slide_w, self.slide_h = self.this_slide.get_size()
         
         # get bboxs list
+        '''
+        bboxs_list: [(x, y), (x2, y2)......]
+        label_list: [1     , 1       ......]
+        '''
         self.bboxs_list=[]
         self.label_list=[]
-        self._get_bboxs_list(verbose=True)
+
+        save_dir  = "/workspace/skin/bbox/"
+        this_name = self.slide_name.split(".ndpi")[0] if self.slide_name.endswith(".ndpi") else self.slide_name
+        bbox_isload = False
+        if os.path.isfile(os.path.join(save_dir, this_name+".npy")):
+            print("==============Loading bboxs==============")
+            tmp = np.load(os.path.join(save_dir, this_name+".npy"))
+            self.bboxs_list = [tuple(tmp[i, :2]) for i in range(tmp.shape[0])]
+            self.label_list = [tmp[i, 2] for i in range(tmp.shape[0])]
+            bbox_isload=True
+        else:
+            self._get_bboxs_list(verbose=True)
+
+        if save_bbox and not bbox_isload:
+            print("===============Saving bboxs===============")
+            if not os.path.isdir(save_dir):
+                os.makedirs(save_dir)
+            save_list = [list(self.bboxs_list[i]) for i in range(len(self.bboxs_list))]
+            for i in range(len(save_list)):
+                save_list[i].append(self.label_list[i])
+            save_list = np.array(save_list)
+            save_path = os.path.join(save_dir, this_name+".npy")
+            np.save(save_path, save_list)
         
         if shuffle:
             self._shuffle()
@@ -77,14 +105,16 @@ class SlideDataSet:
                     if verbose:
                         count += self.frequency_dict[_target['labels'][0]['label']]
         
+        # results is a tuple of lists that returned after each parallel function calls
+        # each list contains several bboxs/labels from the same contour
         results = Parallel(n_jobs=self.num_worker)(delayed(self._random_sample_from_contour)(_contours[i], self.class_map[_labels[i]], 
-                                 self.frequency_dict[_labels[i]]) for i in range(len(_labels)))
+                                 self.frequency_dict[_labels[i]], self.patch_size) for i in range(len(_labels)))
         for bboxs_, labels_ in results:
             self.bboxs_list.extend(bboxs_)
             self.label_list.extend(labels_)
         if verbose:
             end_time = time.time()
-            print("Time elapse: generate {:4d} random patches: {:.4f} sec".format(count, end_time-start_time))
+            print("Time elapse: generate {:4d} random patches in {:.4f} sec".format(count, end_time-start_time))
         
     def __getitem__(self, index):
         # should refill all the Contour object 
@@ -113,12 +143,15 @@ class SlideDataSet:
         random.shuffle(tmp)
         self.bboxs_list, self.label_list=zip(*tmp)
     
-    def _random_sample_from_contour(self, contour, label, num=1):
+    def _random_sample_from_contour(self, contour, label, size, num=1, robust=True):
         if not isinstance(contour, np.int32):
             contour = contour.astype(np.int32)
         # matplotlib version: 16 sec for random generating 93 images
-        p_list = get_point_in_polygon(contour, num, ww=self.slide_w, hh=self.slide_h, x=0, y=0)
-        bboxs  = get_bounding_box(p_list, (self.this_slide.get_size()), size=(512,512))
+        if not robust:
+            p_list = get_point_in_polygon(contour, num, ww=self.slide_w, hh=self.slide_h, x=0, y=0)
+        else: 
+            p_list = get_point_in_polygon_robust(contour, num, ww=self.slide_w, hh=self.slide_h, x=0, y=0)
+        bboxs  = get_bounding_box(p_list, (self.this_slide.get_size()), size=size)
         return (bboxs, [label for i in range(num)])
     
     def close(self):
@@ -136,7 +169,8 @@ class DataLoader(Sequence):
                  valid_slides,
                  label_path, 
                  frequency_dict, 
-                 class_map, 
+                 class_map,
+                 patch_size,
                  preproc_fn=None,
                  augment_fn=None,
                  batch_size=32, 
@@ -161,6 +195,7 @@ class DataLoader(Sequence):
         self.num_of_slide_hold = num_slide
         self.frequency_dict= frequency_dict
         self.class_map     = class_map
+        self.patch_size    = patch_size
         self.num_worker    = num_worker
         self.preproc_fn    = preproc_fn
         self.augment_fn    = augment_fn
@@ -180,6 +215,7 @@ class DataLoader(Sequence):
                                     label_path=self.label_path,
                                     frequency_dict=self.frequency_dict,
                                     class_map=self.class_map,
+                                    patch_size=self.patch_size,
                                     num_worker=self.num_worker,
                                     preproc=self.preproc_fn,
                                     augment=self.augment_fn) for i in range(len(self.valid_slides))]

@@ -7,7 +7,7 @@ import json
 import os
 import pandas as pd
 import tensorflow as tf
-
+import horovod.tensorflow.keras as hvd
 
 
 
@@ -36,15 +36,16 @@ if __name__ == "__main__":
                 collect_histogram(targets, valid_histogram)
     print("Histogram: train valid")
     for key in train_histogram.keys():
-        print("{:}: {:04d} {:04d}".format(key, train_histogram[key], valid_histogram[key]) )
+        print("{:}: {:4d} {:4d}".format(key, train_histogram[key], valid_histogram[key]) )
     print("Sum:", sum(train_histogram.values()), sum(valid_histogram.values()))
     print("======================")
     
     # frequency of each set of slide
-    train_frequency = get_frequency_dict(train_histogram)
-    valid_frequency = get_frequency_dict(valid_histogram)
+    upsample = 4 if cfg.DATASET.INPUT_SHAPE[0] == 256 else 1
+    train_frequency = get_frequency_dict(train_histogram, upsample=upsample)
+    valid_frequency = get_frequency_dict(valid_histogram, upsample=upsample)
     for key in train_histogram.keys():
-        print("{:}: {:04d} {:04d}".format(key, train_frequency[key], valid_frequency[key]) )
+        print("{:}: {:4d} {:4d}".format(key, train_frequency[key], valid_frequency[key]) )
     print("======================")
     
     # show total number of patches for each classes
@@ -55,29 +56,31 @@ if __name__ == "__main__":
     print("======================")
 
     # prepare loader
-    print("Prepare train loader: ")
+    print("==========Prepare train loader=================")
     train_loader = DataLoader(datasets_dir=cfg.DATASET.SLIDE_DIR, 
                               valid_slides=cfg.DATASET.TRAIN_SLIDE,
                               label_path=cfg.DATASET.JSON_PATH,
                               frequency_dict=train_frequency,
                               class_map=class_map,
+                              patch_size=cfg.DATASET.INPUT_SHAPE[:2],
                               preproc_fn=preproc_resnet if cfg.DATASET.PREPROC else None,
                               augment_fn=PathoAugmentation.augmentation if cfg.DATASET.AUGMENT else None,
                               batch_size=cfg.MODEL.BATCH_SIZE, 
                               num_slide=cfg.DATASET.NUM_SLIDE_HOLD)
     
-    print("Prepare validating loader: ")
+    print("==========Prepare validating loader=============")
     valid_loader = DataLoader(datasets_dir=cfg.DATASET.SLIDE_DIR, 
                               valid_slides=cfg.DATASET.VALID_SLIDE,
                               label_path=cfg.DATASET.JSON_PATH,
                               frequency_dict=valid_frequency,
                               class_map=class_map,
+                              patch_size=cfg.DATASET.INPUT_SHAPE[:2],
                               preproc_fn=preproc_resnet if cfg.DATASET.PREPROC else None,
                               batch_size=cfg.MODEL.BATCH_SIZE, 
                               num_slide=cfg.DATASET.NUM_SLIDE_HOLD)
 
     # prepare validating imgs and labels
-    print("Fetch validating data and labels")
+    print("==========Fetch validating data and labels========")
     x_valid, y_valid = valid_loader.pack_data()
 
     # prepare resnet
@@ -95,25 +98,31 @@ if __name__ == "__main__":
     checkpoint_dir=cfg.MODEL.CHECKPOINT_DIR
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
-    prefix = str(cfg.DATASET.INPUT_SHAPE[0])+"loss_acc_S"+str(cfg.DATASET.NUM_SLIDE_HOLD)+"B"+str(cfg.MODEL.EPOCHS)
+    prefix = cfg.MODEL.BACKBONE+str(cfg.DATASET.INPUT_SHAPE[0])+"loss_acc_S"+str(cfg.DATASET.NUM_SLIDE_HOLD)+"B"+str(cfg.MODEL.EPOCHS)
     if cfg.DATASET.AUGMENT: 
         prefix+="_AUG"
     if cfg.DATASET.PREPROC: 
         prefix+="_PREPROC"
-    # checkpoint+path = checkpoint_dir + prefix + ".h5"
-    checkpoint_path = checkpoint_dir + prefix + ".ckpt"
+    checkpoint_path =os.path.join(checkpoint_dir, prefix + ".h5")
+    # checkpoint_path = checkpoint_dir + prefix + ".ckpt"
+    
+    # loading checkpoints:
+    if nos.path.isfile(checkpoint_path):
+        try:
+            print("==============Loading model weights===============")
+            model.load_weights(checkpoint_path)
     
     callbackCheckpoint = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
-                                                                   monitor='val_loss',
-                                                                   save_best_only=True,
-                                                                   save_weights_only= True,
-                                                                   mode='auto')
+                                                            monitor='val_loss',
+                                                            save_best_only=True,
+                                                            save_weights_only= True,
+                                                            mode='auto')
 
     callbackEarlyStop = tf.keras.callbacks.EarlyStopping(monitor='val_loss',
-                                                                min_delta=0,
-                                                                patience=10,
-                                                                verbose=0,
-                                                                mode='auto')
+                                                         min_delta=0,
+                                                         patience=10,
+                                                         verbose=0,
+                                                         mode='auto')
     
     model.summary()
 
@@ -124,7 +133,7 @@ if __name__ == "__main__":
         batch_size=cfg.MODEL.BATCH_SIZE,
         steps_per_epoch=len(train_loader),
         validation_data=(x_valid, y_valid),
-        callbacks=[callbackCheckpoint],
+        callbacks=[callbackCheckpoint, callbackEarlyStop],
         workers=4, use_multiprocessing=True,
             )
     
@@ -145,6 +154,6 @@ if __name__ == "__main__":
             os.makedirs(result_dir)
         result_df.to_csv(os.path.join(result_dir,prefix+".csv"), index=False)
     else:
-        print("Training failed: no history found!")  
+        print("No history found!")  
     
     

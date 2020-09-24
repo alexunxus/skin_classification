@@ -12,7 +12,7 @@ def exist_file(path, prefix, suffix):
             return True
     return False
 
-def collect_histogram(_targets, label_dict):
+def collect_histogram(_targets, label_dict, neglect_follicle=True):
     '''
     Arg:
         _targets: the i-th slide in the folder, it has several contour within it
@@ -49,13 +49,14 @@ def collect_histogram(_targets, label_dict):
             label_dict[label]+=1
     return class_type
 
-def get_frequency_dict(label_dict):
+def get_frequency_dict(label_dict, upsample=1):
     mean = sum(label_dict.values())/len(label_dict)
     num_each_class = mean*10
     key_list = list(label_dict.keys())
     val_list = np.array(list(label_dict.values())).astype(np.float32)
     val_list = num_each_class/val_list
     val_list = np.ceil(val_list).astype(np.int32)
+    val_list *= upsample
     return dict(zip(key_list, val_list))
 
 
@@ -65,7 +66,7 @@ def get_class_map(config_class_list):
         class_map[tup[0]] = tup[1]
     return class_map
 
-def get_bounding_box(center_point, boundary, size=(512,512)):
+def get_bounding_box(center_point, boundary, size):
     '''
     Arg:
         boundary format: (w ,h)
@@ -118,4 +119,21 @@ def get_point_in_polygon(contour, num, ww, hh, x=0, y=0):
             i += 1
         else:
             fail_count += 1
+    return ret
+
+def get_point_in_polygon_robust(contour, num, ww, hh, x=0, y=0):
+    '''
+    Arg:
+        contour: np array with size (n, 2)
+        the polygon lies within (x,x+ww), (y, y+hh)
+        num: the number of points one need to get in the polygon
+    '''
+    ret = []
+    i = 0
+    path_ = mpltPath.Path(contour, closed=True)
+    while i< num:
+        p = (randint(x, x+ww-1), randint(y, y+hh-1))
+        if path_.contains_point(p):
+            ret.append(p)
+            i += 1
     return ret
