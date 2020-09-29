@@ -34,14 +34,14 @@ cfg.merge_from_list(args.opts)
 PRE_BUILD_MODEL = True # In some case, model cannot directly load from yaml.
 
 if PRE_BUILD_MODEL:
-    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-    device = ','.join(str(i) for i in cfg.SYSTEM.DEVICES)
-    os.environ['CUDA_VISIBLE_DEVICES'] = device
-
     from Module.model import return_resnet
     from Module.util  import get_class_map
     with open(os.path.join(cfg.MODEL.MODEL_DIR, "config.yaml")) as f:
         train_cfg = yaml.load(f, Loader=yaml.FullLoader)
+    
+    os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    device = ','.join(str(i) for i in train_cfg["SYSTEM"]["DEVICES"])
+    os.environ['CUDA_VISIBLE_DEVICES'] = device
 
     class_map = get_class_map(cfg.DATASET.CLASS_MAP)
     model = return_resnet(cfg.MODEL.BACKBONE, classNum=len(class_map), in_shape=cfg.DATASET.INPUT_SHAPE)
@@ -72,7 +72,7 @@ for i_item, slide_file in enumerate(datalist):
                  histologic_name=None,
                  classifier=model,
                  class_map=cfg.DATASET.CLASS_MAP,
-                 batch_size=32)
+                 batch_size=train_cfg["SOURCE"]["BATCH_SIZE"])
     pred_np = Predictor.get_np_pred()
     end = time.time()
     print('Total inference time: ', time.time()-end)

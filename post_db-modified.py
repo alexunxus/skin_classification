@@ -22,7 +22,7 @@ if __name__ == "__main__":
     parser.add_argument("--username", default="cgmhpath_npc")
     parser.add_argument("--password", default="HUIF4752zqvm")
     parser.add_argument(
-        "--result_dir", default="/mnt/ai_result/research/NPC-KHCGMH/NPC/")
+        "--result_dir", default="/mnt/ai_result/research/A19001_NCKU_SKIN/")
     parser.add_argument(
         "--replace_source", default="/workspace/skin/result/inference_CSV/")
     parser.add_argument(

@@ -22,8 +22,8 @@ args = parser.parse_args()
 ## Define Thres-level and Color Table
 thres_level = np.linspace(0, 1, 11)[0:-1]
 color_table = {
-    0:{"class": "Muscle",
-       "colorcode": (181, 136, 24)
+    0:{"class": "Background",
+       "colorcode": (255, 255, 255)
       },
     1:{"class": "Inflammatory infiltration",
        "colorcode": (255, 87, 34)
@@ -35,7 +35,7 @@ color_table = {
        "colorcode": (205, 220, 57)
       },
     4:{"class": "Hair follicles",
-       "colorcode": (3, 169, 244)
+       "colorcode": (0, 0, 153)
       },
     5:{"class": "Dermis",
        "colorcode": (76, 175, 80)
@@ -46,8 +46,11 @@ color_table = {
     7:{"class": "Epidermis",
        "colorcode": (3, 169, 244)
       },
-    8:{"class": "Background",
-       "colorcode": (32, 32, 32)
+    8:{"class": "Blood vessels", #??
+       "colorcode": (255, 0, 0)
+      },
+    9:{"class": "Muscle", #??
+       "colorcode": (181, 136, 24)
       },
 }
 
@@ -68,10 +71,16 @@ slide_h = df["h"].max() + 1
 # For save overlap slide & predict mask
 
 col_name = [i for i in df.columns if "pred" in i]
+#if len(col_name) == 0:
+#  new_col_name = [color_table[idx]['class'] for idx in range(len(color_table))]
+#else:
 new_col_name = [color_table[idx]['class'] for idx, name in enumerate(col_name)]
 
 for thres in thres_level:
     # if the most confidnent value is less than thres, make it as normal
+    #if len(col_name) == 0:
+    #  value = df[new_col_name].values
+    #else:
     value = df[col_name].values
     
     value = value.reshape((slide_h,slide_w,-1)) if len(value.shape) > 1 else value.reshape((slide_h,slide_w)) #[H,W,cls]
@@ -84,7 +93,7 @@ for thres in thres_level:
 
         v = value[h,w,cls]
         if v < thres:
-            cls = 8
+            cls = 0
         colorcode = color_table[cls]["colorcode"]
         mask[h,w,:3] = colorcode
         mask[h,w,3] = 255*args.alpha_level

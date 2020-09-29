@@ -23,6 +23,7 @@ class SlideDataSet:
                  frequency_dict,
                  class_map,
                  patch_size,
+                 interest=None,
                  preproc=None,
                  augment=None,
                  shuffle=True,
@@ -35,6 +36,7 @@ class SlideDataSet:
         self.frequency_dict=frequency_dict
         self.class_map=class_map
         self.patch_size=patch_size
+        self.interest=interest
         self.preproc_fn = preproc
         self.augment_fn = augment
         self.shuffle = shuffle
@@ -60,8 +62,8 @@ class SlideDataSet:
         if os.path.isfile(os.path.join(save_dir, this_name+".npy")):
             print("==============Loading bboxs==============")
             tmp = np.load(os.path.join(save_dir, this_name+".npy"))
-            self.bboxs_list = [tuple(tmp[i, :2]) for i in range(tmp.shape[0])]
-            self.label_list = [tmp[i, 2] for i in range(tmp.shape[0])]
+            self.bboxs_list = [tuple(tmp[i, :2]) for i in range(tmp.shape[0]) if tmp[i, 2] < len(self.class_map)]
+            self.label_list = [tmp[i, 2] for i in range(tmp.shape[0]) if tmp[i, 2] < len(self.class_map)]
             bbox_isload=True
         else:
             self._get_bboxs_list(verbose=True)
@@ -90,14 +92,15 @@ class SlideDataSet:
             if verbose:
                 count = 0
                 start_time = time.time()
-            for i in range(len(_data[key][0]['targets'])):
-                _target=_data[key][0]['targets'][i]
+            num_seg = len(_data[key][0]['targets']) if type(_data[key]) is list else len(_data[key]['targets'])
+            for i in range(num_seg):
+                _target=_data[key][0]['targets'][i] if type(_data[key]) is list else _data[key]['targets'][i]
                 if len(_target['labels'])==0:
                     continue
-                if len(_target['segments'])<10:
+                if len(_target['segments'])<10: # and len(_target['segments']) != 4:
                     continue
-                if _target['labels'][0]['label'] == 55:
-                    # ignore blood vessel class due to its small size
+                if self.interest is not None and _target['labels'][0]['label'] not in self.interest:
+                    # ignore non-interested class due to its small size
                     continue
                 else:
                     _labels.append( _target['labels'][0]['label'])
@@ -108,7 +111,7 @@ class SlideDataSet:
         # results is a tuple of lists that returned after each parallel function calls
         # each list contains several bboxs/labels from the same contour
         results = Parallel(n_jobs=self.num_worker)(delayed(self._random_sample_from_contour)(_contours[i], self.class_map[_labels[i]], 
-                                 self.frequency_dict[_labels[i]], self.patch_size) for i in range(len(_labels)))
+                                  self.patch_size, self.frequency_dict[_labels[i]]) for i in range(len(_labels)))
         for bboxs_, labels_ in results:
             self.bboxs_list.extend(bboxs_)
             self.label_list.extend(labels_)
@@ -144,6 +147,12 @@ class SlideDataSet:
         self.bboxs_list, self.label_list=zip(*tmp)
     
     def _random_sample_from_contour(self, contour, label, size, num=1, robust=True):
+        '''
+        Arg: contour: list of tuple
+             label: 0~7
+             size: (512, 512)
+             num: 
+        '''
         if not isinstance(contour, np.int32):
             contour = contour.astype(np.int32)
         # matplotlib version: 16 sec for random generating 93 images
@@ -158,68 +167,29 @@ class SlideDataSet:
         self.close_flag = True
         self.this_slide.close()
         self.cur_pos    = 0
-    
-    def residual_length(self):
-        return self.__len__()-self.cur_pos
+
 
 
 class DataLoader(Sequence):
     def __init__(self, 
-                 datasets_dir, 
-                 valid_slides,
-                 label_path, 
-                 frequency_dict, 
-                 class_map,
-                 patch_size,
-                 preproc_fn=None,
-                 augment_fn=None,
+                 datasets,
                  batch_size=32, 
                  num_slide=5,
                  num_worker=10):
         """"
         Arg: 
-            datasets_dir: a lists of datasets names
-            valid_slides: only choose slide from this list of string
-            label_path: the label json file path
+            datasets: a lists of SlideDataset object
             batch_size: default 32 per batch
             num_slide: randomly get 5 datasets from directory
-            class_map: map from class num to (0~8)
-            preproc_fn: preprocessing function
-            augment_fn: augmentation function
         """
-        self.datasets_dir  = datasets_dir
-        self.valid_slides  = valid_slides
-        self.label_path    = label_path
-        self.datasets      = []
+        self.datasets      = datasets
         self.batch_size    = batch_size
         self.num_of_slide_hold = num_slide
-        self.frequency_dict= frequency_dict
-        self.class_map     = class_map
-        self.patch_size    = patch_size
-        self.num_worker    = num_worker
-        self.preproc_fn    = preproc_fn
-        self.augment_fn    = augment_fn
         
-        #generate datasets from valid slides
-        self._gen_datasets()
-        self._shuffle_datasets()
+        # sequence will record i-th dataset j-th patch
+        self._sequence = [(i, j) for i, dataset in enumerate(self.datasets) for j in range(len(dataset))]
+        random.shuffle(self._sequence)
 
-    def _gen_datasets(self):
-        '''
-        Function: generate all the available patches from each valid slides 
-        Arg: nil
-        Return: nil
-        '''
-        self.datasets=[SlideDataSet(slide_path=self.datasets_dir,
-                                    slide_name=self.valid_slides[i],
-                                    label_path=self.label_path,
-                                    frequency_dict=self.frequency_dict,
-                                    class_map=self.class_map,
-                                    patch_size=self.patch_size,
-                                    num_worker=self.num_worker,
-                                    preproc=self.preproc_fn,
-                                    augment=self.augment_fn) for i in range(len(self.valid_slides))]
-        
     def __getitem__(self, index):
         '''
         Function: 
@@ -231,22 +201,24 @@ class DataLoader(Sequence):
         # return batches of images and labels
         batch_x = []
         batch_y = []
-        for i in range(self.batch_size):
-            img, label = self._random_select_patch_()
+
+        end = min(self.batch_size*(index+1), len(self._sequence))
+        selected_index = self._sequence[self.batch_size*index: end]
+        for i in range(len(selected_index)):
+            dataset_no, patch_no = selected_index[i]
+            assert patch_no < len(self.datasets[dataset_no])
+            img, label = self.datasets[dataset_no][patch_no]
             batch_x.append(img)
             batch_y.append(label)
         img_list = np.array(batch_x)
         lab_list = np.array(batch_y)
         return img_list, lab_list
-
-    def _shuffle_datasets(self):
-        random.shuffle(self.datasets)
         
     def on_epoch_end(self):
         """
         Method called at the end of every epoch.
         """
-        self._shuffle_datasets()
+        pass
     
     def pack_data(self):
         '''
@@ -261,7 +233,7 @@ class DataLoader(Sequence):
                 imgs.append(img)
                 labels.append(label)
         return np.array(imgs), np.array(labels)
-        
+
     def _random_select_patch_(self, verbose=False):
         '''
         Function: 
@@ -277,15 +249,6 @@ class DataLoader(Sequence):
         Return: (total patch * num_of_slide_hold / num_of_datasets) / 32
         '''
         return int(self.num_of_patches() * self.num_of_slide_hold/len(self.datasets)/self.batch_size)
-
-    def _residual_length(self):
-        '''
-        Return: the sum of the residual number of patches
-        '''
-        ret = 0
-        for dataset in self.datasets:
-            ret += dataset.residual_length()
-        return ret
     
     def num_of_patches(self):
         '''

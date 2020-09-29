@@ -12,7 +12,7 @@ def exist_file(path, prefix, suffix):
             return True
     return False
 
-def collect_histogram(_targets, label_dict, neglect_follicle=True):
+def collect_histogram(_targets, label_dict, interest=None):
     '''
     Arg:
         _targets: the i-th slide in the folder, it has several contour within it
@@ -38,7 +38,7 @@ def collect_histogram(_targets, label_dict, neglect_follicle=True):
             #print('Some segments are probably mis-annotated', target['segments'])
             continue
         label = target['labels'][0]['label']    
-        if label == 55:
+        if interest is not None and label not in interest:
             # do not include class "blood vessel" due to its small size
             continue
 
@@ -49,14 +49,14 @@ def collect_histogram(_targets, label_dict, neglect_follicle=True):
             label_dict[label]+=1
     return class_type
 
-def get_frequency_dict(label_dict, upsample=1):
+def get_frequency_dict(label_dict, upsample=4):
     mean = sum(label_dict.values())/len(label_dict)
-    num_each_class = mean*10
+    num_each_class = mean*10*upsample
     key_list = list(label_dict.keys())
     val_list = np.array(list(label_dict.values())).astype(np.float32)
     val_list = num_each_class/val_list
     val_list = np.ceil(val_list).astype(np.int32)
-    val_list *= upsample
+    #val_list *= upsample
     return dict(zip(key_list, val_list))
 
 

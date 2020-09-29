@@ -98,6 +98,11 @@ def multi_category_focal_loss1(alpha, gamma=2.0):
         return loss
     return multi_category_focal_loss1_fixed
 
+def scheduler(epoch, lr):
+    if epoch < 10:
+        return lr
+    else:
+        return lr * tf.math.exp(-0.1)
 
 if __name__ == "__main__":
     Y_true = np.array([[1, 1, 1, 1, 1], [0, 0, 0, 0, 0]])

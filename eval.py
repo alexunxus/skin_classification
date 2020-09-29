@@ -12,7 +12,8 @@ class SlidePredictor:
                  histologic_name,
                  classifier,
                  class_map,
-                 batch_size=32
+                 batch_size=32,
+                 fast=True,
                 ):
         self.bbox_shape = bbox_shape
         self.slide_dir  = slide_dir
@@ -20,32 +21,20 @@ class SlidePredictor:
         self.histologic_name = histologic_name
         self.classifier = classifier
         self.batch_size = batch_size
-        self.colormap   = [
-            "tomato",
-            "chocolate",
-            "tan",
-            "gold",
-            "olive",
-            "palegreen",
-            "cyan",
-            "navy",
-            "white"
-        ]
-        if class_map is None:
-            self.class_map = {
-                80: 0, 
-                56: 1, 
-                43: 2, 
-                53: 3, 
-                45: 4, 
-                42: 5,
-                54: 6, 
-                41: 7
-                #(55, 8)
-            }
-        else:
-            self.class_map=class_map
-        
+        self.colormap   = [(1, 1, 1),
+                           (0.7098039215686275, 0.5333333333333333, 0.09411764705882353), 
+                           (1.0, 0.3411764705882353, 0.13333333333333333), 
+                           (0.9137254901960784, 0.11764705882352941, 0.38823529411764707), 
+                           (0.803921568627451, 0.8627450980392157, 0.2235294117647059), 
+                           (0.0, 0.0, 0.6), 
+                           (0.2980392156862745, 0.6862745098039216, 0.3137254901960784), 
+                           (0.611764705882353, 0.15294117647058825, 0.6901960784313725), 
+                           (0.011764705882352941, 0.6627450980392157, 0.9568627450980393), 
+                           (1, 0, 0),
+                           (0.7098039215686275, 0.5333333333333333, 0.09411764705882353)
+                           ]
+        self.class_map=class_map
+
         self.this_slide = Slide_ndpread(os.path.join(slide_dir, slide_name))
         W, H = self.this_slide.get_size()
         w, h = bbox_shape[0], bbox_shape[1]
@@ -55,33 +44,61 @@ class SlidePredictor:
         self.w_stride = W//w if W%w==0 else W//w+1
         self.h_stride = H//h if H%h==0 else H//h+1
         self.prob_map = np.zeros((self.w_stride, self.h_stride, len(self.class_map)), dtype=np.float32)
-        self.tiny_slide = self.this_slide.get_patch_with_resize(coord=(0, 0), 
-                                            src_sz=(W, H),
-                                            dst_sz=(self.w_stride, self.h_stride))
-        self.background_mask = self._judge_bg()
         
-        #self._background_test()
+        assert W//w*w <= W and H//h*h <= H
+        self.tiny_slide = self.this_slide.get_patch_with_resize(coord=(0,0),
+                                                                src_sz = (W//w*w, H//h*h),
+                                                                dst_sz = (W//w, H//h)
+                                                                #dst_sz = (self.w_stride, self.h_stride)
+                                                               )
+        self.tiny_slide = np.pad(self.tiny_slide, 
+                                 ((0, self.h_stride-self.tiny_slide.shape[0]),
+                                  (0, self.w_stride-self.tiny_slide.shape[1]), 
+                                  (0, 0)), 
+                                 mode="reflect")
+        self.background_mask = np.zeros((self.h_stride, self.w_stride))
+        self.fast = fast
+        if fast:
+            self.background_mask = self._judge_bg()
+            #np.set_printoptions(threshold=np.inf)
+            #print(self.background_mask)
         self._get_prob_map()
+        self._class_heatmap = np.argmax(self.prob_map, axis=-1)
     
     def _judge_bg(self):
         hsv_img = rgb2hsv(self.tiny_slide)
         saturation_img = hsv_img[:, :, 1]
-        return np.array(saturation_img<0.05)
+        return np.array(saturation_img<0.05, dtype=np.int32)
         
-    
     def _get_prob_map(self):
         # 277*76
         patches = []
         coords  = []
+        np.set_printoptions(threshold=np.inf)
+        #if(self.fast): print(self.fast)
+        #print(self.background_mask)
+        
         for i in range(self.w_stride):
             begin_time = time.time()
             for j in range(self.h_stride):
-                patch = self.this_slide.get_patch_at_level((512*i, 512*j), 
+                if self.fast and self.background_mask[j, i] != 0:
+                    # background, not even get patch
+                    #print(f"({j}, {i}) is bg")
+                    continue
+                else:
+                    try:
+                        patch = self.this_slide.get_patch_at_level((512*i, 512*j), 
                                                                   self.bbox_shape)/255.
-                if not self.background_mask[j, i]:
+                    except:
+                        self.background_mask[j, i] = 1
+                    if not self.fast:
+                        saturation = rgb2hsv(patch)[..., 1].mean()
+                        if saturation < 0.05:
+                            self.background_mask[j, i] = 1
+                if self.background_mask[j, i] == 0:
                     patches.append(patch)
                     coords.append((i, j))
-                    if len(patches)%self.batch_size==31:
+                    if len(patches)%self.batch_size==self.batch_size-1:
                         preds = self.classifier(np.array(patches, dtype=np.float32)).numpy()
                         for idx, coord in enumerate(coords):
                             self.prob_map[coord[0], coord[1]] = np.copy(preds[idx])
@@ -96,57 +113,30 @@ class SlidePredictor:
                 self.prob_map[coord[0], coord[1]] = np.copy(preds[idx])
             patches.clear()
             coords.clear()
-        
-        predicted_cls = np.array([[np.argmax(self.prob_map[i,j]) for i in range(self.prob_map.shape[0])] 
-                         for j in range(self.prob_map.shape[1])])
-        predicted_cls[self.background_mask] = len(self.class_map)
-        
-    def _background_test(self):
+        self.prob_map[self.background_mask.transpose().astype(bool), 0] = 1
+    
+    def _postprocess(self):
         '''
-            normalized to 0~1:
-            background std: 0.0017
-            background mean: 0.93
+        Handle adipose tissue that is adjacent to epidermis
         '''
-        std  = []
-        mean = []
-        for i in range(0, self.w_stride, 10):
-            for j in range(self.h_stride):
-                patch = self.this_slide.get_patch_at_level((512*i, 512*j), self.bbox_shape)/255.
-                std.append(np.std(patch))
-                mean.append(np.mean(patch))
-        print("{:}: std median {:04f}, mean median {: 03f}".format(self.slide_name,
-                                                                  np.median(np.array(std)),
-                                                                  np.median(np.array(mean))))
-        
+        adipose_mask = np.where(self._class_heatmap == 2)
             
     def visualize_predict(self, axis):
-        predicted_cls = np.array([[np.argmax(self.prob_map[i,j]) for i in range(self.prob_map.shape[0])] 
-                         for j in range(self.prob_map.shape[1])])
-        predicted_cls[self.background_mask] = len(self.class_map)
-        
-        w_s, h_s = self.w_stride, self.h_stride
-        x = np.array([i for j in range(h_s)for i in range(w_s)])
-        y = np.array([j for j in range(h_s)for i in range(w_s)])
-        assert len(x) == len(y)
-        classes = [predicted_cls[y[i], x[i]] for i in range(len(x))]
-        for cls in np.unique(classes):
-            ix = np.where(classes == cls)
-            axis.scatter(x[ix], y[ix], c = self.colormap[cls], 
-                         label = self.histologic_name[cls], marker='s', s=8)
-        axis.legend(loc="lower right", bbox_to_anchor=(1,1), ncol=4, fontsize=10, markerscale=2)
-        #axis.scatter(x, y, color=color)
-        axis.set_xlim([0, w_s])
-        axis.set_ylim([0, h_s])
+        predicted_cls = np.argmax(self.prob_map, axis=-1)
+        # heatmap in shape[h, w, 3]
+        heatmap = np.zeros((predicted_cls.shape[1], predicted_cls.shape[0], 3))
+        for w in range(predicted_cls.shape[0]):
+            for h in range(predicted_cls.shape[1]):
+                heatmap[h, w] = np.array(self.colormap[int(predicted_cls[w][h])])
+        heatmap = 0.5*heatmap + 0.5*self.tiny_slide/255.
+        axis.imshow(heatmap)
     
     def get_np_pred(self):
         '''
-        self.pro_map is in shape (w, h, 9)
+        self.prob_map is in shape (w, h, 10)
         however, the PRP run session require flattened (h, w)
         '''
-        back  = np.zeros((self.w_stride, self.h_stride, 1))
-        back[self.background_mask.transpose()] = 1
-        ret = np.concatenate([self.prob_map, back], axis=2)
-        return ret.transpose((1,0,2)).reshape((-1, ret.shape[2]))
+        return self.prob_map.transpose((1,0,2)).reshape((-1, self.prob_map.shape[2]))
     
     def get_shape(self):
         return self.W, self.H

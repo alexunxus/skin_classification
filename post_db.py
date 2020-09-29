@@ -11,6 +11,7 @@ parser.add_argument("--username", type=str, default="NCKU_skin_admin", help="it 
 parser.add_argument("--password", type=str, default="9MBwbuAJ1S", help="it is okay to use any account to post")
 parser.add_argument("--API_URL", type=str, default="https://research.aetherai.com/home/viewer/patch_result/add_result/", help="API url to post")
 parser.add_argument("--replace_path", type=str, default="True", help="API url to post")
+"/mnt/ai_result/resear"
 args = parser.parse_args()
 URL = "https://research.aetherai.com/home/accounts/login/" #login URL
 API = args.API_URL # "https://research.aetherai.com/home/viewer/patch_result/add_result/"
