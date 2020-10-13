@@ -71,16 +71,12 @@ slide_h = df["h"].max() + 1
 # For save overlap slide & predict mask
 
 col_name = [i for i in df.columns if "pred" in i]
-#if len(col_name) == 0:
-#  new_col_name = [color_table[idx]['class'] for idx in range(len(color_table))]
-#else:
+if len(col_name) == 0:
+   col_name = [i for i in range(len(df.columns)-2)]
+   df.columns = ['w', 'h'] + col_name
 new_col_name = [color_table[idx]['class'] for idx, name in enumerate(col_name)]
 
 for thres in thres_level:
-    # if the most confidnent value is less than thres, make it as normal
-    #if len(col_name) == 0:
-    #  value = df[new_col_name].values
-    #else:
     value = df[col_name].values
     
     value = value.reshape((slide_h,slide_w,-1)) if len(value.shape) > 1 else value.reshape((slide_h,slide_w)) #[H,W,cls]

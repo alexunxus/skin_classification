@@ -53,7 +53,7 @@ if __name__ == "__main__":
             elif type(data[key]) is dict:
                 targets = data[key]["targets"]
             else:
-                print("Undeciphorable json file!")
+                print("Indeciphorable json file!")
                 raise ValueError
             if key+".ndpi" in train_slides:
                 collect_histogram(targets, train_histogram, interest=cfg.DATASET.INT_TO_CLASS)
@@ -102,10 +102,10 @@ if __name__ == "__main__":
                                     num_worker=10,
                                     preproc=preproc_resnet if cfg.DATASET.PREPROC else None,
                                     augment=PathoAugmentation.augmentation if cfg.DATASET.AUGMENT else None,
-                                    save_bbox=True) for i in range(len(cfg.DATASET.TRAIN_SLIDE))]
+                                    save_bbox=True, 
+                                    multiscale=cfg.MODEL.MULTISCALE) for i in range(len(cfg.DATASET.TRAIN_SLIDE))]
     train_loader = DataLoader(datasets=train_datasets, 
-                              batch_size=cfg.MODEL.BATCH_SIZE, 
-                              num_slide=cfg.DATASET.NUM_SLIDE_HOLD)
+                              batch_size=cfg.MODEL.BATCH_SIZE)
     
     if is_hvd_0: 
         print("==========Prepare validating loader=============")
@@ -120,10 +120,10 @@ if __name__ == "__main__":
                                      augment=None,
                                      shuffle=False,
                                      num_worker=10,
-                                     save_bbox = True) for i in range(len(cfg.DATASET.VALID_SLIDE))]
+                                     save_bbox = True,
+                                     multiscale=cfg.MODEL.MULTISCALE) for i in range(len(cfg.DATASET.VALID_SLIDE))]
         valid_loader = DataLoader(datasets=valid_datasets, 
-                                  batch_size=cfg.MODEL.BATCH_SIZE, 
-                                  num_slide=len(cfg.DATASET.VALID_SLIDE))
+                                  batch_size=cfg.MODEL.BATCH_SIZE)
         # prepare validating imgs and labels
         # print("==========Fetch validating data and labels========")
         # x_valid, y_valid = valid_loader.pack_data()
@@ -155,6 +155,8 @@ if __name__ == "__main__":
         prefix+="_AUG"
     if cfg.DATASET.PREPROC: 
         prefix+="_PREPROC"
+    if cfg.MODEL.MULTISCALE:
+        prefix+="_MULTISCALE"
     checkpoint_path =os.path.join(checkpoint_dir, prefix + ".h5")
     # checkpoint_path = checkpoint_dir + prefix + ".ckpt"
     

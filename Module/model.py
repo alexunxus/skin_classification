@@ -15,7 +15,9 @@ graph_mapping = {
     "R-101-xt":ResNeXt101}
 
 
-def return_resnet(nettype, classNum=9, in_shape=(512, 512, 3)):
+def return_resnet(nettype, classNum, in_shape):
+    # return a "nettype" structure according to hephaestus tf models
+    # net type: a string, will be map to model object by graph_mapping
     model = graph_mapping[nettype](include_top=False,
                                weights="imagenet",
                                input_shape=in_shape,
@@ -28,7 +30,7 @@ def return_resnet(nettype, classNum=9, in_shape=(512, 512, 3)):
 
 
 class MyResNet(tf.keras.Model):
-    def __init__(self, classNum=2, in_shape=(512,512,3)):
+    def __init__(self, classNum, in_shape=(512,512,3)):
         super(MyResNet, self).__init__()
         self.in_shape=in_shape
         self.base = ResNet50(include_top=False,
@@ -99,6 +101,7 @@ def multi_category_focal_loss1(alpha, gamma=2.0):
     return multi_category_focal_loss1_fixed
 
 def scheduler(epoch, lr):
+    # scheduler for learning rate, epoch < 10 keep original lr, > 10: lr *= exp(-0.1)
     if epoch < 10:
         return lr
     else:

@@ -31,7 +31,6 @@ _C.DATASET.EXTENSION=".ndpi"
 _C.DATASET.BLUR=0.1
 
 _C.DATASET.INPUT_SHAPE   = (512,512,3) #(256,256,3)
-_C.DATASET.NUM_SLIDE_HOLD = 5
 _C.DATASET.NUM_WORKER = 10
 _C.DATASET.AUGMENT = True
 _C.DATASET.PREPROC = False
@@ -102,9 +101,13 @@ _C.MODEL.ALPHA = [
 [1],
 [2],
 [1], # if include skeletal muscle
-#[1], # if include vessel classes
+[1], # if include vessel classes
 #[1], # if include nerve fiber
 ]
+
+# new function: multiscale learning
+_C.MODEL.MULTISCALE = 4096
+
 _C.MODEL.CHECKPOINT_DIR = "/workspace/skin/checkpoint/"
 _C.MODEL.RESULT_DIR     = "/workspace/skin/checkpoint/"
 _C.MODEL.DEBUG          = False

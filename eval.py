@@ -65,25 +65,39 @@ class SlidePredictor:
         self._get_prob_map()
         self._class_heatmap = np.argmax(self.prob_map, axis=-1)
     
-    def _judge_bg(self):
+    def _judge_bg(self, expand=True):
         hsv_img = rgb2hsv(self.tiny_slide)
         saturation_img = hsv_img[:, :, 1]
-        return np.array(saturation_img<0.05, dtype=np.int32)
+        boolean_mask = np.array(saturation_img<0.05, dtype=np.int32)
+        if not expand:
+            return boolean_mask
+        for w in range(boolean_mask.shape[1]):
+            meet = 0
+            for h in range(boolean_mask.shape[0]):
+                if boolean_mask[h, w] == 0:
+                    meet = 2
+                elif meet > 0:
+                    boolean_mask[h, w] = 0
+                    meet -= 1
+            meet = 0
+            for h in range(boolean_mask.shape[0])[::-1]:
+                if boolean_mask[h, w] == 0:
+                    meet = 2
+                elif meet > 0:
+                    boolean_mask[h, w] = 0
+                    meet -= 1
+
+        return boolean_mask
         
     def _get_prob_map(self):
         # 277*76
         patches = []
         coords  = []
-        np.set_printoptions(threshold=np.inf)
-        #if(self.fast): print(self.fast)
-        #print(self.background_mask)
-        
+
         for i in range(self.w_stride):
             begin_time = time.time()
             for j in range(self.h_stride):
                 if self.fast and self.background_mask[j, i] != 0:
-                    # background, not even get patch
-                    #print(f"({j}, {i}) is bg")
                     continue
                 else:
                     try:
