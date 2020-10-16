@@ -2,7 +2,7 @@ from yacs.config import CfgNode as CN
 
 _C = CN() # Node, lv0
 _C.SYSTEM = CN() # None, lv1
-_C.SYSTEM.DEVICES = [0]
+_C.SYSTEM.DEVICES = [2]
 _C.SYSTEM.USE_HOROVOD=False
 
 _C.DATASET = CN()
@@ -32,35 +32,25 @@ _C.DATASET.BLUR=0.1
 
 _C.DATASET.INPUT_SHAPE   = (512,512,3) #(256,256,3)
 _C.DATASET.NUM_WORKER = 10
+_C.DATASET.NUM_SLIDE = 4
 _C.DATASET.AUGMENT = True
 _C.DATASET.PREPROC = False
 
-"""_C.DATASET.CLASS_MAP = [
-    (80, 0), # "muscle"
-    (56, 1), # "inflammatory infiltration"
-    (43, 2), # "adipose tissue"
-    (53, 3), # "sweat gland"
-    (45, 4), # "hair follicles" 
-    (42, 5), # "dermis"
-    (54, 6), # "sebaceous gland"
-    (41, 7)  # "epidermis"
-    #(55, 8) # "blood vessels"
-]"""
 _C.DATASET.CLASS_MAP = [
-    (225,0), # "background"
-    (56, 1), # "inflammatory infiltration"
-    (43, 2), # "adipose tissue"
-    (53, 3), # "sweat gland"
-    (45, 4), # "hair follicles" 
-    (42, 5), # "dermis"
-    (54, 6), # "sebaceous gland"
-    (41, 7), # "epidermis"
-    (202,8), # "skeletal muscle"
-    (55, 9), # "blood vessels"
-    #(226,10),# "nerve fiber"
-    #(80, 11),# "smooth muscle"
-    #(44, 12),# "unspecified"
-    #(220,13),# "ROI"   
+    [225,0, 1, "background"               ], # "background"
+    [56, 1, 2, "inflammatory infiltration"], # "inflammatory infiltration"
+    [43, 2, 1, "adipose tissue"           ], # "adipose tissue"
+    [53, 3, 1, "sweat gland"              ], # "sweat gland"
+    [45, 4, 2, "hair follicles"           ], # "hair follicles" 
+    [42, 5, 1, "dermis"                   ], # "dermis"
+    [54, 6, 1, "sebaceous gland"          ], # "sebaceous gland"
+    [41, 7, 2, "epidermis"                ], # "epidermis"
+    [202,8, 1, "skeletal muscle"          ], # "skeletal muscle"
+    [55, 9, 1, "blood vessels"            ], # "blood vessels"
+    #[226,10, 1, "nerve fiber"],# "nerve fiber"
+    #[80, 11, 1, "smooth muscle"],# "smooth muscle"
+    #[44, 12, 1, "unspecified"],# "unspecified"
+    #[220,13, 1, "ROI"],# "ROI"   
 ]
 _C.DATASET.HIST_NAME = [
     "background", 
@@ -87,26 +77,14 @@ _C.MODEL.LIBRARY = "tensorflow" # "pytorch"
 _C.MODEL.BACKBONE = "R-101-v1"# "R-50-v1"
 _C.MODEL.BATCH_SIZE = 16
 _C.MODEL.EPOCHS = 50
-_C.MODEL.LEARNING_RATE = 1e-4
+_C.MODEL.LEARNING_RATE = 3e-5 # 1e-4 for SGD
 _C.MODEL.USE_PRETRAIN = True
 _C.MODEL.NORM_USE = "bn" # bn, gn
 _C.MODEL.OPTIMIZER = "SGD" #"Adam" # SGD, Adam
-_C.MODEL.ALPHA = [
-[1],
-[2],
-[1],
-[1],
-[2],
-[1],
-[1],
-[2],
-[1], # if include skeletal muscle
-[1], # if include vessel classes
-#[1], # if include nerve fiber
-]
+_C.MODEL.LOAD_WEIGHT = False
 
 # new function: multiscale learning
-_C.MODEL.MULTISCALE = 4096
+_C.MODEL.MULTISCALE = 0#4096
 
 _C.MODEL.CHECKPOINT_DIR = "/workspace/skin/checkpoint/"
 _C.MODEL.RESULT_DIR     = "/workspace/skin/checkpoint/"

@@ -3,6 +3,7 @@ from skimage.color import rgb2hsv
 import numpy as np
 import time
 import os
+from tqdm import tqdm
 
 class SlidePredictor:
     def __init__(self, 
@@ -14,6 +15,7 @@ class SlidePredictor:
                  class_map,
                  batch_size=32,
                  fast=True,
+                 five_crop = True,
                 ):
         self.bbox_shape = bbox_shape
         self.slide_dir  = slide_dir
@@ -21,6 +23,7 @@ class SlidePredictor:
         self.histologic_name = histologic_name
         self.classifier = classifier
         self.batch_size = batch_size
+        self.five_crop  = five_crop
         self.colormap   = [(1, 1, 1),
                            (0.7098039215686275, 0.5333333333333333, 0.09411764705882353), 
                            (1.0, 0.3411764705882353, 0.13333333333333333), 
@@ -49,7 +52,6 @@ class SlidePredictor:
         self.tiny_slide = self.this_slide.get_patch_with_resize(coord=(0,0),
                                                                 src_sz = (W//w*w, H//h*h),
                                                                 dst_sz = (W//w, H//h)
-                                                                #dst_sz = (self.w_stride, self.h_stride)
                                                                )
         self.tiny_slide = np.pad(self.tiny_slide, 
                                  ((0, self.h_stride-self.tiny_slide.shape[0]),
@@ -60,8 +62,6 @@ class SlidePredictor:
         self.fast = fast
         if fast:
             self.background_mask = self._judge_bg()
-            #np.set_printoptions(threshold=np.inf)
-            #print(self.background_mask)
         self._get_prob_map()
         self._class_heatmap = np.argmax(self.prob_map, axis=-1)
     
@@ -86,45 +86,71 @@ class SlidePredictor:
                 elif meet > 0:
                     boolean_mask[h, w] = 0
                     meet -= 1
-
         return boolean_mask
         
+    def crop(self, x, y):
+        # perform five crop at coordinate x, y (left-upper vertex)
+        # return: 5 np-image list[center, LUQ, RUQ, LLQ, RLQ]
+        patch_size = self.bbox_shape[0]
+        dirs = [(0, 0), (-patch_size//2, -patch_size//2), (patch_size//2, -patch_size//2), (-patch_size//2, patch_size//2), (patch_size//2, patch_size//2)]
+        ret = []
+        for dx, dy in dirs:
+            ret.append(self.this_slide.get_patch_at_level((x+dx, y+dy), self.bbox_shape)/255.)
+        return ret
+
     def _get_prob_map(self):
         # 277*76
         patches = []
         coords  = []
 
-        for i in range(self.w_stride):
+        for i in tqdm(range(self.w_stride)):
             begin_time = time.time()
             for j in range(self.h_stride):
                 if self.fast and self.background_mask[j, i] != 0:
                     continue
                 else:
                     try:
-                        patch = self.this_slide.get_patch_at_level((512*i, 512*j), 
-                                                                  self.bbox_shape)/255.
+                        # if the slide ndpi file is corrupted, getting some patches may raise error
+                        if self.five_crop:
+                            patch = self.crop(self.bbox_shape[0]*i, self.bbox_shape[1]*j)
+                        else:
+                            patch = self.this_slide.get_patch_at_level((512*i, 512*j), 
+                                                                       self.bbox_shape)/255.
                     except:
                         self.background_mask[j, i] = 1
                     if not self.fast:
-                        saturation = rgb2hsv(patch)[..., 1].mean()
+                        saturation = rgb2hsv(patch[0] if self.five_crop else patch)[..., 1].mean()
                         if saturation < 0.05:
                             self.background_mask[j, i] = 1
                 if self.background_mask[j, i] == 0:
-                    patches.append(patch)
-                    coords.append((i, j))
-                    if len(patches)%self.batch_size==self.batch_size-1:
+                    if isinstance(patch, list):
+                        patches.extend(patch)
+                        coords.extend([(i, j) for k in range(len(patch))])
+                    else:
+                        patches.append(patch)
+                        coords.append((i, j))
+                    if len(patches) >= self.batch_size:
+                    #if len(patches)%self.batch_size==self.batch_size-1:
                         preds = self.classifier(np.array(patches, dtype=np.float32)).numpy()
-                        for idx, coord in enumerate(coords):
-                            self.prob_map[coord[0], coord[1]] = np.copy(preds[idx])
+                        if self.five_crop:
+                            for idx, coord in enumerate(coords[::5]):
+                                self.prob_map[coord[0], coord[1]] = np.copy(np.mean(preds[5*idx:5*(idx+1)], axis=0))
+                        else:
+                            for idx, coord in enumerate(coords):
+                                self.prob_map[coord[0], coord[1]] = np.copy(preds[idx])
                         patches.clear()
                         coords.clear()
             end_time = time.time()
-            print("Column {:}/{:}: time elapse {:}".format(i, self.w_stride, end_time-begin_time), end='\r')
+            #print("Column {:}/{:}: time elapse {:}".format(i, self.w_stride, end_time-begin_time), end='\r')
         
         if len(patches):
             preds = self.classifier(np.array(patches, dtype=np.float32)).numpy()
-            for idx, coord in enumerate(coords):
-                self.prob_map[coord[0], coord[1]] = np.copy(preds[idx])
+            if self.five_crop:
+                for idx, coord in enumerate(coords[::5]):
+                    self.prob_map[coord[0], coord[1]] = np.copy(np.mean(preds[5*idx:5*(idx+1)], axis=0))
+            else:
+                for idx, coord in enumerate(coords):
+                    self.prob_map[coord[0], coord[1]] = np.copy(preds[idx])
             patches.clear()
             coords.clear()
         self.prob_map[self.background_mask.transpose().astype(bool), 0] = 1

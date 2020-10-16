@@ -200,18 +200,21 @@ class SlideDataSet:
 class DataLoader(Sequence):
     def __init__(self, 
                  datasets,
+                 num_slide,
                  batch_size=32, 
-                 num_worker=10):
+                 num_worker=10,
+                 ):
         """"
         Arg: 
             datasets: a lists of SlideDataset object
             batch_size: default 32 per batch
-            num_slide: randomly get 5 datasets from directory
+            num_slide: randomly get num_slide datasets from directory
             Will keep a list of (dataset id, i-th item of this dataset), shuffle it and 
             take batches of images from this list.
         """
         self.datasets      = datasets
         self.batch_size    = batch_size
+        self.num_slide     = num_slide
         
         # sequence will record i-th dataset j-th patch
         self._sequence = [(i, j) for i, dataset in enumerate(self.datasets) for j in range(len(dataset))]
@@ -241,7 +244,7 @@ class DataLoader(Sequence):
         """
         Method called at the end of every epoch. shuffle?
         """
-        pass
+        random.shuffle(self._sequence)
     
     def pack_data(self):
         '''
@@ -261,7 +264,7 @@ class DataLoader(Sequence):
         '''
         Return: total number of patches in datasets
         '''
-        return sum([len(dataset) for dataset in self.datasets])//self.batch_size
+        return sum([len(dataset) for dataset in self.datasets])*self.num_slide//(self.batch_size*len(self.datasets))
 
 if __name__ == "__main__":
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"

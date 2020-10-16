@@ -47,10 +47,10 @@ color_table = {
        "colorcode": (3, 169, 244)
       },
     8:{"class": "Blood vessels", #??
-       "colorcode": (255, 0, 0)
+       "colorcode": (181, 136, 24)
       },
     9:{"class": "Muscle", #??
-       "colorcode": (181, 136, 24)
+       "colorcode": (255, 0, 0)
       },
 }
 

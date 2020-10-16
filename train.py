@@ -10,6 +10,7 @@ import tensorflow as tf
 import horovod.tensorflow.keras as hvd
 import numpy as np
 import argparse
+import shutil
 from Module.config import get_cfg_defaults
 
 parser = argparse.ArgumentParser(description='Train with config file')
@@ -105,6 +106,7 @@ if __name__ == "__main__":
                                     save_bbox=True, 
                                     multiscale=cfg.MODEL.MULTISCALE) for i in range(len(cfg.DATASET.TRAIN_SLIDE))]
     train_loader = DataLoader(datasets=train_datasets, 
+                              num_slide=cfg.DATASET.NUM_SLIDE,
                               batch_size=cfg.MODEL.BATCH_SIZE)
     
     if is_hvd_0: 
@@ -123,13 +125,15 @@ if __name__ == "__main__":
                                      save_bbox = True,
                                      multiscale=cfg.MODEL.MULTISCALE) for i in range(len(cfg.DATASET.VALID_SLIDE))]
         valid_loader = DataLoader(datasets=valid_datasets, 
+                                  num_slide=len(valid_datasets), # take all valid slide
                                   batch_size=cfg.MODEL.BATCH_SIZE)
         # prepare validating imgs and labels
         # print("==========Fetch validating data and labels========")
         # x_valid, y_valid = valid_loader.pack_data()
 
     # prepare resnet
-    model = return_resnet(cfg.MODEL.BACKBONE, classNum=len(class_map), in_shape=cfg.DATASET.INPUT_SHAPE)
+    input_shape = (*cfg.DATASET.INPUT_SHAPE[:2], cfg.DATASET.INPUT_SHAPE[2]*2) if cfg.MODEL.MULTISCALE else cfg.DATASET.INPUT_SHAPE
+    model = return_resnet(cfg.MODEL.BACKBONE, classNum=len(class_map), in_shape=input_shape)
 
     if cfg.SYSTEM.USE_HOROVOD:
         # Horovod: adjust learning rate based on number of GPUs.
@@ -140,8 +144,9 @@ if __name__ == "__main__":
         # use lr in config
         optim = build_optimizer(cfg.MODEL.OPTIMIZER, cfg.MODEL.LEARNING_RATE)
 
-    model.build(input_shape=(1,)+cfg.DATASET.INPUT_SHAPE)
-    model.compile(loss=[multi_category_focal_loss1(alpha=cfg.MODEL.ALPHA, gamma=2)],
+    model.build(input_shape=(1,)+input_shape)
+    alphas = [[data[2]]for data in cfg.DATASET.CLASS_MAP]
+    model.compile(loss=[multi_category_focal_loss1(alpha=alphas, gamma=2)],
                   metrics=["accuracy"], 
                   optimizer=optim)
     
@@ -161,10 +166,15 @@ if __name__ == "__main__":
     # checkpoint_path = checkpoint_dir + prefix + ".ckpt"
     
     # loading checkpoints:
-    if os.path.isfile(checkpoint_path):
+    if os.path.isfile(checkpoint_path) and cfg.MODEL.LOAD_WEIGHT:
         if is_hvd_0:
             print("==============Loading model weights===============")
         model.load_weights(checkpoint_path)
+    if os.path.isfile(checkpoint_path) and not cfg.MODEL.LOAD_WEIGHT:
+        if is_hvd_0:
+            print("WARNING: checkpoint path already exist!, move original file")
+            shutil.move(checkpoint_path, checkpoint_path+"_01")
+
     
     callbackCheckpoint = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                                             monitor='val_loss',

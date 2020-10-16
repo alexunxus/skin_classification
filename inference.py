@@ -66,23 +66,25 @@ for i_item, slide_file in enumerate(datalist):
 
     # inference started     
     print("Working on {}/{}, {}, Loader Ready, start inferencing".format(i_item + 1, len(datalist), slide_file))
+    #start = time.time()
     Predictor = SlidePredictor(bbox_shape=(cfg.DATASET.INPUT_SHAPE[0], cfg.DATASET.INPUT_SHAPE[1]), 
                  slide_dir=cfg.DATASET.SLIDE_DIR,
                  slide_name=slide_file,
                  histologic_name=None,
                  classifier=model,
                  class_map=cfg.DATASET.CLASS_MAP,
-                 batch_size=train_cfg["SOURCE"]["BATCH_SIZE"])
+                 batch_size=train_cfg["SOURCE"]["BATCH_SIZE"],
+                 five_crop =train_cfg["SOURCE"]["FIVE_CROP"])
     pred_np = Predictor.get_np_pred()
-    end = time.time()
-    print('Total inference time: ', time.time()-end)
+    #end = time.time()
+    #print('                                              \rTotal inference time: ', end-start)
     
     # Patch Result Post-processing
     PRP = PRP_fn(patch_size=cfg.DATASET.INPUT_SHAPE[0],
                  raw_h=Predictor.get_shape()[1],
                  raw_w=Predictor.get_shape()[0],
                  blur=0,
-                 # show_probability=True
+                 # show_probability=True,
                  )#cfg.DATASET.BLUR)
 
     d = PRP.run(prediction=pred_np, result_dir=result_dir, target_folder=target_folder)

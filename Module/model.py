@@ -28,6 +28,35 @@ def return_resnet(nettype, classNum, in_shape):
     out = tf.keras.layers.Activation("softmax", name="output")(logit)
     return tf.keras.Model(inputs=[model.input], outputs=[out])
 
+class DualResNet(tf.keras.Model):
+    def __init__(self, classNum, nettype, in_shape):
+        super(DualResNet, self).__init__()
+        self.in_shape = in_shape
+        self.orig_net = graph_mapping[nettype](include_top=False,
+                               weights="imagenet",
+                               input_shape=in_shape,
+                               pooling="avg",
+                               classes=classNum,
+                               norm_use="bn",)
+        self.marco_net = graph_mapping[nettype](include_top=False,
+                               weights="imagenet",
+                               input_shape=in_shape,
+                               pooling="avg",
+                               classes=classNum,
+                               norm_use="bn",)
+        self.concate = tf.keras.layers.concatenate(axis=-1)
+        self.logit = tf.keras.layers.Dense(units=classNum, name="logit")
+        self.out = tf.keras.layers.Activation("softmax", name="output")
+        
+    def call(self, x):
+        orig_img = x[..., :3]
+        macro_img = x[..., 3:]
+        x1 = self.orig_net(orig_img)
+        x2 = self.macro_net(macro_img)
+        x = self.concate([x1, x2])
+        x = self.logit(x)
+        return self.out(x)
+
 
 class MyResNet(tf.keras.Model):
     def __init__(self, classNum, in_shape=(512,512,3)):
