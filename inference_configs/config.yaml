@@ -1,10 +1,10 @@
 SYSTEM:
-  DEVICES: ["1"]
+  DEVICES: ["0"]
 SOURCE:
   # MODEL_DIR: "/workspace/skin/checkpoint/512loss_acc_S5B50_AUG.ckpt"
   MODEL_DIR: "/workspace/skin/checkpoint/R-101-v1_512_E50_cls10_AUG.h5"
   RESULT_DIR: "/workspace/skin/result/"
-  BATCH_SIZE: 16
+  BATCH_SIZE: 32
   FIVE_CROP: True
   INFERENCE_FILES: ["2019-10-30 02.01.19.ndpi",
 "2019-10-30 02.02.21.ndpi",

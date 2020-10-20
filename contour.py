@@ -28,15 +28,15 @@ if __name__ == "__main__":
     infer_model_ckpt = "/workspace/mmdetection/results/Monu-pn/latest.pth"
     cfg_path = "/workspace/mmdetection/results/Monu-pn/cfg_model-Monu.py"
     img_path = "/workspace/skin/roi/"
-    label_path = "/workspace/skin/label/label.json"
+    #label_path = "/workspace/skin/label/label.json"
     cfg = Config.fromfile(cfg_path)
     cfg["test_cfg"]["rcnn"]["nms"]["iou_threshold"] = threshold
     #classes = ("N", "P")
     classes= ('epithelial', 'lymphocyte', 'neutrophil', 'macrophage')
 
     # read label json file --> want to know the bbox original (x, y)
-    with open(label_path) as f:
-        js = json.load(f)
+    #with open(label_path) as f:
+    #    js = json.load(f)
 
     model = init_detector(config=cfg, checkpoint=infer_model_ckpt, device="cuda:0")
     model.CLASSES = classes

@@ -260,11 +260,14 @@ class DataLoader(Sequence):
                 labels.append(label)
         return np.array(imgs), np.array(labels)
     
+    def get_labels(self):
+        return [self.datasets[i].label_list[j] for i, j in self._sequence]
+
     def __len__(self):
         '''
         Return: total number of patches in datasets
         '''
-        return sum([len(dataset) for dataset in self.datasets])*self.num_slide//(self.batch_size*len(self.datasets))
+        return math.ceil(sum([len(dataset) for dataset in self.datasets])*self.num_slide*1./(self.batch_size*len(self.datasets)))
 
 if __name__ == "__main__":
     os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"

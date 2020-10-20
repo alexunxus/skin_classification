@@ -56,6 +56,10 @@ color_table = {
 
 
 ## main script
+'''
+Read the df file from the intended folder, move the original heatmap into folder binary_map
+recolor the image according to the color table above and threshold, with default color = background.
+'''
 slide_folder = os.path.join(args.mask_dir, args.slide_name)
 if not os.path.exists("{}/binary_map".format(slide_folder)):
     os.makedirs("{}/binary_map".format(slide_folder))

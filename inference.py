@@ -14,7 +14,7 @@ from tqdm import tqdm
 from Module.config import get_cfg_defaults
 from hephaestus.model_tools.yaml2model import Yaml2Model
 from hephaestus.compose.wsi_patch.api import PatchResultPostprocess
-from eval import SlidePredictor
+from Module.eval import SlidePredictor, PRPMgr, InfDataSet
 import time
 
 parser = argparse.ArgumentParser()
@@ -66,7 +66,8 @@ for i_item, slide_file in enumerate(datalist):
 
     # inference started     
     print("Working on {}/{}, {}, Loader Ready, start inferencing".format(i_item + 1, len(datalist), slide_file))
-    #start = time.time()
+    
+    """
     Predictor = SlidePredictor(bbox_shape=(cfg.DATASET.INPUT_SHAPE[0], cfg.DATASET.INPUT_SHAPE[1]), 
                  slide_dir=cfg.DATASET.SLIDE_DIR,
                  slide_name=slide_file,
@@ -76,13 +77,18 @@ for i_item, slide_file in enumerate(datalist):
                  batch_size=train_cfg["SOURCE"]["BATCH_SIZE"],
                  five_crop =train_cfg["SOURCE"]["FIVE_CROP"])
     pred_np = Predictor.get_np_pred()
-    #end = time.time()
-    #print('                                              \rTotal inference time: ', end-start)
-    
+    """
+    inference_dataset = InfDataSet(slide_dir=cfg.DATASET.SLIDE_DIR,
+                                   slide_name=slide_file,
+                                   patch_size=cfg.DATASET.INPUT_SHAPE[0:2],
+                                   hsv_threshold=0.05)
+    prpMgr = PRPMgr(inference_dataset, model, center_weight=1, batch_size=32)
+    pred_np = prpMgr.get_heatmap()
+      
     # Patch Result Post-processing
     PRP = PRP_fn(patch_size=cfg.DATASET.INPUT_SHAPE[0],
-                 raw_h=Predictor.get_shape()[1],
-                 raw_w=Predictor.get_shape()[0],
+                 raw_h=inference_dataset.get_shape()[1],
+                 raw_w=inference_dataset.get_shape()[0],
                  blur=0,
                  # show_probability=True,
                  )#cfg.DATASET.BLUR)
@@ -90,7 +96,6 @@ for i_item, slide_file in enumerate(datalist):
     d = PRP.run(prediction=pred_np, result_dir=result_dir, target_folder=target_folder)
     with open(os.path.join(target_folder, "mapping.json"), "w") as f:
         json.dump(d, f)
-    del Predictor
    
 print('Finish Inference')
 
