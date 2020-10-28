@@ -67,17 +67,6 @@ for i_item, slide_file in enumerate(datalist):
     # inference started     
     print("Working on {}/{}, {}, Loader Ready, start inferencing".format(i_item + 1, len(datalist), slide_file))
     
-    """
-    Predictor = SlidePredictor(bbox_shape=(cfg.DATASET.INPUT_SHAPE[0], cfg.DATASET.INPUT_SHAPE[1]), 
-                 slide_dir=cfg.DATASET.SLIDE_DIR,
-                 slide_name=slide_file,
-                 histologic_name=None,
-                 classifier=model,
-                 class_map=cfg.DATASET.CLASS_MAP,
-                 batch_size=train_cfg["SOURCE"]["BATCH_SIZE"],
-                 five_crop =train_cfg["SOURCE"]["FIVE_CROP"])
-    pred_np = Predictor.get_np_pred()
-    """
     inference_dataset = InfDataset(slide_dir=cfg.DATASET.SLIDE_DIR,
                                    slide_name=slide_file,
                                    patch_size=cfg.DATASET.INPUT_SHAPE[0:2],
