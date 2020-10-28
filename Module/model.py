@@ -15,7 +15,7 @@ graph_mapping = {
     "R-101-xt":ResNeXt101}
 
 
-def return_resnet(nettype, classNum, in_shape):
+def build_resnet(nettype, classNum, in_shape):
     # return a "nettype" structure according to hephaestus tf models
     # net type: a string, will be map to model object by graph_mapping
     model = graph_mapping[nettype](include_top=False,
@@ -56,32 +56,6 @@ class DualResNet(tf.keras.Model):
         x = self.concate([x1, x2])
         x = self.logit(x)
         return self.out(x)
-
-
-class MyResNet(tf.keras.Model):
-    def __init__(self, classNum, in_shape=(512,512,3)):
-        super(MyResNet, self).__init__()
-        self.in_shape=in_shape
-        self.base = ResNet50(include_top=False,
-                               weights="imagenet",
-                               input_shape=in_shape,
-                               pooling="ave",
-                               classes=classNum,
-                               norm_use="bn",
-                               #lr2=0.001,
-                               )
-        self.logit = tf.keras.layers.Dense(units=classNum, name="logit")
-        self.out   = tf.keras.layers.Activation("softmax", name="output")
-
-    def call(self, x):
-        x = self.base(x)
-        x = self.pooling(x)
-        x = self.logit(x)
-        return self.out(x)
-    
-    def model(self):
-        x = tf.keras.Input(shape=self.in_shape)
-        return tf.keras.Model(inputs=[x], outputs=self.call(x))
         
 def build_optimizer(optimizer, learning_rate):
     """

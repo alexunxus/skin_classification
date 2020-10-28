@@ -13,7 +13,7 @@ from mmcv.ops.nms import batched_nms
 from mmdet.apis import inference_detector, init_detector, show_result_pyplot
 from Module.customized_show_result import show_result
 
-from Module.contour_util import MMD_ContourParser
+from Module.contour_util import MMDContourParser
 
 TRAIN_INPUT_SIZE = 1024
 INFERENCE_STRIDES = 1024
@@ -68,7 +68,7 @@ if __name__ == "__main__":
             segm_masks.append(m)
         result = (bboxes_list, segm_masks)
             
-        contour_parser = MMD_ContourParser(
+        contour_parser = MMDContourParser(
             label_dict={0:'epithelial', 1:'lymphocyte', 2:'neutrophil', 3:'macrophage'},
             nms_cfg=cfg["test_cfg"]["rcnn"]["nms"],
             score_threshold=threshold)
@@ -152,7 +152,7 @@ if __name__ == "__main__":
         segm_masks.append(m)
     result = (bboxes_list, segm_masks)
 
-    contour_parser = MMD_ContourParser(
+    contour_parser = MMDContourParser(
         label_dict={0:'epithelial', 1:'lymphocyte', 2:'neutrophil', 3:'macrophage'},
         nms_cfg=cfg["test_cfg"]["rcnn"]["nms"],
         score_threshold=threshold)

@@ -14,7 +14,7 @@ from tqdm import tqdm
 from Module.config import get_cfg_defaults
 from hephaestus.model_tools.yaml2model import Yaml2Model
 from hephaestus.compose.wsi_patch.api import PatchResultPostprocess
-from Module.eval import SlidePredictor, PRPMgr, InfDataSet
+from Module.eval import SlidePredictor, InferenceRunner, InfDataset
 import time
 
 parser = argparse.ArgumentParser()
@@ -78,12 +78,12 @@ for i_item, slide_file in enumerate(datalist):
                  five_crop =train_cfg["SOURCE"]["FIVE_CROP"])
     pred_np = Predictor.get_np_pred()
     """
-    inference_dataset = InfDataSet(slide_dir=cfg.DATASET.SLIDE_DIR,
+    inference_dataset = InfDataset(slide_dir=cfg.DATASET.SLIDE_DIR,
                                    slide_name=slide_file,
                                    patch_size=cfg.DATASET.INPUT_SHAPE[0:2],
                                    hsv_threshold=0.05)
-    prpMgr = PRPMgr(inference_dataset, model, center_weight=1, batch_size=32)
-    pred_np = prpMgr.get_heatmap()
+    inference_runner = InferenceRunner(inference_dataset, model, center_weight=1, batch_size=32)
+    pred_np = inference_runner.get_heatmap()
       
     # Patch Result Post-processing
     PRP = PRP_fn(patch_size=cfg.DATASET.INPUT_SHAPE[0],

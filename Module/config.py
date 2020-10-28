@@ -34,7 +34,7 @@ _C.DATASET.INPUT_SHAPE   = (512,512,3) #(256,256,3)
 _C.DATASET.NUM_WORKER = 10
 _C.DATASET.NUM_SLIDE = 4
 _C.DATASET.AUGMENT = True
-_C.DATASET.PREPROC = False
+_C.DATASET.PREPROC = True
 
 _C.DATASET.CLASS_MAP = [
     [225,0, 1, "background"               ], # "background"

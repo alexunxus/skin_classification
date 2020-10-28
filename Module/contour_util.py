@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from mmcv.ops.nms import batched_nms
 
-class MMD_ContourParser:
+class MMDContourParser:
     def __init__(self, 
                  label_dict,
                  nms_cfg,

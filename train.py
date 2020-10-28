@@ -1,6 +1,6 @@
-from Module.dataloader import DataLoader, SlideDataSet
-from Module.util import *
-from Module.model import MyResNet, return_resnet, build_optimizer, preproc_resnet, multi_category_focal_loss1, scheduler
+from Module.dataloader import DataLoader, SlideDataset
+from Module.util import get_class_map, get_frequency_dict, collect_histogram
+from Module.model import MyResNet, build_resnet, build_optimizer, preproc_resnet, multi_category_focal_loss1, scheduler
 from Module.config import get_cfg_defaults
 from Module.augment import PathoAugmentation
 import json
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     # prepare loader
     if is_hvd_0:
         print("==========Prepare train loader=================")
-    train_datasets =[SlideDataSet(slide_path=cfg.DATASET.SLIDE_DIR,
+    train_datasets =[SlideDataset(slide_path=cfg.DATASET.SLIDE_DIR,
                                     slide_name=cfg.DATASET.TRAIN_SLIDE[i],
                                     label_path=cfg.DATASET.JSON_PATH,
                                     frequency_dict=train_frequency,
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     
     if is_hvd_0: 
         print("==========Prepare validating loader=============")
-        valid_datasets=[SlideDataSet(slide_path=cfg.DATASET.SLIDE_DIR,
+        valid_datasets=[SlideDataset(slide_path=cfg.DATASET.SLIDE_DIR,
                                      slide_name=cfg.DATASET.VALID_SLIDE[i],
                                      label_path=cfg.DATASET.JSON_PATH,
                                      frequency_dict=valid_frequency,
@@ -132,8 +132,8 @@ if __name__ == "__main__":
         # x_valid, y_valid = valid_loader.pack_data()
 
     # prepare resnet
-    input_shape = (*cfg.DATASET.INPUT_SHAPE[:2], cfg.DATASET.INPUT_SHAPE[2]*2) if cfg.MODEL.MULTISCALE else cfg.DATASET.INPUT_SHAPE
-    model = return_resnet(cfg.MODEL.BACKBONE, classNum=len(class_map), in_shape=input_shape)
+    input_shape = cfg.DATASET.INPUT_SHAPE
+    model = build_resnet(cfg.MODEL.BACKBONE, classNum=len(class_map), in_shape=input_shape)
 
     if cfg.SYSTEM.USE_HOROVOD:
         # Horovod: adjust learning rate based on number of GPUs.

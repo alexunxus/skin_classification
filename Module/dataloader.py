@@ -6,16 +6,13 @@ import time
 import math
 import json
 import numpy as np
-try:
-    from Module.util import *
-except:
-    from util import *
+from .util import get_bounding_box, get_point_in_polygon, get_point_in_polygon_robust, get_frequency_dict, get_class_map
 from tensorflow.keras.utils import to_categorical
 from tensorflow.keras.utils import Sequence
 from joblib import Parallel, delayed
 
 
-class SlideDataSet:
+class SlideDataset:
     def __init__(self,
                  slide_path,
                  slide_name,
@@ -157,6 +154,7 @@ class SlideDataSet:
             img = self.augment_fn.augment_image(img)
 
         if self.preproc_fn is not None:
+            img *= 255.
             img = self.preproc_fn(img)
         self.cur_pos = (self.cur_pos+1)%len(self)
         return img, to_categorical(label, self.num_class)
@@ -312,7 +310,7 @@ if __name__ == "__main__":
     valid_frequency = get_frequency_dict(valid_histogram, upsample=upsample)
     
 
-    train_datasets =[SlideDataSet(slide_path=cfg.DATASET.SLIDE_DIR,
+    train_datasets =[SlideDataset(slide_path=cfg.DATASET.SLIDE_DIR,
                                     slide_name=cfg.DATASET.TRAIN_SLIDE[i],
                                     label_path=cfg.DATASET.JSON_PATH,
                                     frequency_dict=train_frequency,
