@@ -7,6 +7,9 @@ from tqdm import tqdm
 from tensorflow.keras.utils import Sequence
 import math
 
+def getwh(slide_path):
+    return Slide_ndpread(slide_path).get_size()
+
 class InfDataset:
     def __init__(self,
                  slide_dir,

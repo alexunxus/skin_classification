@@ -11,9 +11,9 @@ from mmcv import Config
 from mmcv.ops.nms import batched_nms
 
 from mmdet.apis import inference_detector, init_detector, show_result_pyplot
-from Module.customized_show_result import show_result
+from skin_model.customized_show_result import show_result
 
-from Module.contour_util import MMDContourParser
+from skin_model.contour_util import MMDContourParser
 
 TRAIN_INPUT_SIZE = 1024
 INFERENCE_STRIDES = 1024

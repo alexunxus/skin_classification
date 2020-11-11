@@ -1,8 +1,8 @@
-from Module.dataloader import DataLoader, SlideDataset
-from Module.util import get_class_map, get_frequency_dict, collect_histogram
-from Module.model import MyResNet, build_resnet, build_optimizer, preproc_resnet, multi_category_focal_loss1, scheduler
-from Module.config import get_cfg_defaults
-from Module.augment import PathoAugmentation
+from skin_model.dataloader import DataLoader, SlideDataset
+from skin_model.util import get_class_map, get_frequency_dict, collect_histogram
+from skin_model.model import build_resnet, build_optimizer, preproc_resnet, multi_category_focal_loss1, scheduler
+from skin_model.config import get_cfg_defaults
+from skin_model.augment import PathoAugmentation
 import json
 import os
 import pandas as pd
@@ -11,13 +11,7 @@ import horovod.tensorflow.keras as hvd
 import numpy as np
 import argparse
 import shutil
-from Module.config import get_cfg_defaults
-
-parser = argparse.ArgumentParser(description='Train with config file')
-parser.add_argument('--config', default="Module.config",
-                    help='config file path')
-
-args = parser.parse_args()
+from skin_model.config import get_cfg_defaults
 
 if __name__ == "__main__":
 
