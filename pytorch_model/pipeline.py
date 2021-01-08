@@ -4,6 +4,7 @@ from tqdm import tqdm
 import typing
 from typing import Callable, Tuple, Union
 import numpy as np
+from mpi4py import MPI
 
 import torch
 from torch import nn
@@ -23,7 +24,11 @@ def train(cfg, model: nn.Module, optimizer: object, train_loader: dataloader, cr
     train_correct = 0.
     predictions   = []
     groundtruth   = []
-    pbar = tqdm(enumerate(train_loader, 0))
+
+    if cfg.DATASET.USE_CROSS_VALID and MPI.COMM_WORLD.Get_rank() == 0:
+        pbar = tqdm(enumerate(train_loader, 0))
+    else:
+        pbar = enumerate(train_loader, 0)
     
     # tracking data time and GPU time and print them on tqdm bar.
     end_time = time.time()
@@ -60,8 +65,9 @@ def train(cfg, model: nn.Module, optimizer: object, train_loader: dataloader, cr
         total_loss    += running_loss
         train_correct += correct(predictions[-1], groundtruth[-1])
 
-        pbar.set_postfix_str(f"[{epoch}/{cfg.MODEL.EPOCHS}] [{i+1}/{len(train_loader)} "+
-                                f"training loss={running_loss:.4f}, data time = {data_time:.4f}, gpu time = {gpu_time:.4f}")
+        if cfg.DATASET.USE_CROSS_VALID and MPI.COMM_WORLD.Get_rank() == 0:
+            pbar.set_postfix_str(f"[{epoch}/{cfg.MODEL.EPOCHS}] [{i+1}/{len(train_loader)} "+
+                                 f"training loss={running_loss:.4f}, data time = {data_time:.4f}, gpu time = {gpu_time:.4f}")
         end_time = time.time()
 
     groundtruth = flatten_list_tensor_to_numpy(groundtruth,len(cfg.DATASET.INT_TO_CLASS))
@@ -83,7 +89,12 @@ def validation(cfg, model: nn.Module, test_loader: dataloader, criterion: Callab
     predictions = []
     groundtruth = []
     model.eval()
-    for imgs, labels in tqdm(test_loader):
+
+    pbar = test_loader
+    if cfg.DATASET.USE_CROSS_VALID and MPI.COMM_WORLD.Get_rank == 0:
+        pbar = tqdm(test_loader)
+    
+    for imgs, labels in pbar:
         with torch.no_grad():
             imgs          = imgs.cuda()
             labels        = labels.cuda()

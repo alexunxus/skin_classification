@@ -2,12 +2,13 @@ from yacs.config import CfgNode as CN
 
 _C = CN() # Node, lv0
 _C.SYSTEM = CN() # None, lv1
-_C.SYSTEM.DEVICES = [2]
+_C.SYSTEM.DEVICES = [0, 2, 3, 4]
 
 _C.SOURCE = CN()
 _C.SOURCE.DEBUG= False
 
 _C.DATASET = CN()
+_C.DATASET.USE_CROSS_VALID = True
 _C.DATASET.SLIDE_DIR = "/mnt/cephrbd/data/A19001_NCKU_SKIN/Image/20191106/"
 _C.DATASET.LABEL_PATH = "/workspace/skin/label/label.json" #"/mnt/cephrbd/data/A19001_NCKU_SKIN/Meta/key-image-locations.json"
 _C.DATASET.BBOX_PATH  = "/workspace/skin/bbox/"
@@ -37,8 +38,8 @@ _C.DATASET.TEST_SLIDE = [
 
 _C.DATASET.EXTENSION=".ndpi"
 
-_C.DATASET.PATCH_SIZE   = 512 #256
-_C.DATASET.NUM_SLIDE = 4
+_C.DATASET.PATCH_SIZE   = 512
+_C.DATASET.NUM_SLIDE = 9
 _C.DATASET.AUGMENT = True
 _C.DATASET.PREPROC = True
 
@@ -63,13 +64,13 @@ _C.DATASET.CLASS_MAP = [
 _C.DATASET.INT_TO_CLASS = [225, 56, 43, 53, 45, 42, 54, 41, 202, 55]
 
 _C.MODEL = CN()
-_C.MODEL.BACKBONE = "r50" #'enet-b0'
-_C.MODEL.BATCH_SIZE = 8
+_C.MODEL.BACKBONE = "r101" #'r50', 'r101', 'e-b0', 'e-b1', 'se-r101', 'se-r50'
+_C.MODEL.BATCH_SIZE = 16
 _C.MODEL.EPOCHS = 50
 _C.MODEL.LEARNING_RATE = 3e-5 # 1e-4 for SGD
 _C.MODEL.USE_PRETRAIN = True
 _C.MODEL.NORM_USE          = "bn" # bn, gn
-_C.MODEL.OPTIMIZER         = "SGD" #"Adam" # SGD, Adam
+_C.MODEL.OPTIMIZER         = "SGD" #"Adam", "SGD"
 _C.MODEL.LOAD_CSV          = False
 _C.MODEL.PATIENCE          = 5
 
@@ -81,7 +82,7 @@ _C.MODEL.DEBUG          = False
 _C.MODEL.MODEL_DIR      = "/workspace/skin/inference_configs/"
 
 _C.METRIC = CN()
-_C.METRIC.MODEL_SELECTION_CRITERION = 'test_losses'
+_C.METRIC.MODEL_SELECTION_CRITERION = 'auc'
 _C.METRIC.KEYS = ['test_acc','train_acc', 'test_losses','train_losses', 
                   'auc', 'precision','recall', 'AP', 'f1']
 

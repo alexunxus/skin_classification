@@ -52,7 +52,7 @@ class Dataset:
         self.extension          = extension
         self.img_sz             = img_sz
         self.num_cls            = num_cls
-        self.num_slide_hold     = num_slide_hold
+        self.num_slide_hold     = min(num_slide_hold, len(target_slide_names))
         self.interest_id_list   = interest_id_list
         self.bbox_dir           = bbox_dir
         self.aug_fn             = aug_fn

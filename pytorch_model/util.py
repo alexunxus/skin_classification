@@ -2,6 +2,7 @@ import numpy as np
 import random # shuffling
 import pandas as pd
 import os
+import json
 from skimage.color import rgb2hsv
 import skimage
 import typing
@@ -140,7 +141,104 @@ class Metric:
         for key in self.metric_dict.keys():
             print(f"{key} =  {self.metric_dict[key][epoch]}, ", end='')
         print('\n')
+
+def split_train_valid(train_val_list, valid_head, valid_len):
     
+    total_len = len(train_val_list)
+    train_len = total_len - valid_len
+    assert train_len > 0
+    
+    valid = []
+    train = []
+    
+    for idx in range(valid_head, valid_head + valid_len):
+        valid.append(train_val_list[idx % total_len])
+    
+    for idx in range(valid_head+valid_len, valid_head+valid_len + train_len):
+        train.append(train_val_list[idx % total_len])
+    
+    return train, valid
+        
+def cross_valid(train_val_list:list, json_path:str, num_cls:int, id_map:dict, split_ratio: int = 0.25):
+    fold = get_k_fold(train_val_list, split_ratio)
+    statistics, contour_len_stat = parse_labels(json_path, num_cls, id_map)
+    while not check_train_not_zero(statistics, fold, num_cls):
+        fold = get_k_fold(train_val, seed=int(random.randint(1, 100000)))
+    return fold
+
+def get_k_fold(train_val_list: list, split_ratio: int =0.25, seed: int = 65536):
+    random.seed(seed)
+    random.shuffle(train_val_list)
+    total_len = len(train_val_list)
+    valid_len = int(split_ratio*total_len)
+    
+    fold = []
+    valid_head = 0
+    
+    while valid_head < total_len:
+        train, valid = split_train_valid(train_val_list, valid_head, valid_len)
+        fold.append([train, valid])
+        valid_head += valid_len
+    
+    return fold
+
+def parse_labels(json_path, num_cls, id_map, extension='.ndpi'):
+    statistics = {}
+    contour_len_stat = []
+
+    with open(json_path) as f:
+        json_dict = json.load(f)
+        keys = list(json_dict.keys())
+
+        # collect label
+        for key in keys:
+            targets = json_dict[key]['targets']
+            
+            # discard slides with few labels
+            if (len(targets) < 35):
+                continue
+                
+            # register keys
+            statistics[key+extension] = np.zeros(num_cls, dtype=np.int32)
+            
+            for target in targets:
+                # check there is item in labels
+                if len(target['labels']) == 0:
+                    continue
+
+                # check label is in interset
+                label = (target['labels'][0]['label'])
+                if not label in id_map.keys():
+                    continue
+
+                contour_len = len(target['segments'])
+                # check contour length rational
+                contour_len_stat.append(contour_len)
+                if contour_len <10:
+                    continue
+                statistics[key+extension][id_map[label][0]] += 1
+    
+    return statistics, contour_len_stat
+
+def check_train_not_zero(statistics:dict, fold: list, num_cls: int):
+
+    for idx, (train, val) in enumerate(fold):
+        train_state = count_stat(statistics, train, num_cls)
+        for i in train_state:
+            if i == 0:
+                # one class not present in train data --> invalid splitting, try another seed!
+                return False
+    return True
+    
+
+def count_stat(statistics, keys, num_cls):
+
+    ret = np.zeros(num_cls, dtype=np.int32)
+    for key in keys:
+        ret += statistics[key]
+    
+    return ret
+
 if __name__ == '__main__':
     m = Metric()
     m.load_metrics('../checkpoint/tmp.csv')
@@ -152,3 +250,5 @@ if __name__ == '__main__':
         m.push_loss_acc_kappa(*test_,  train=False)
     
     m.save_metrics('../checkpoint/tmp.csv')
+
+

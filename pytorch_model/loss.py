@@ -41,8 +41,8 @@ def correct(gt: Union[np.ndarray, Tensor], pred: Union[np.ndarray, Tensor]) -> n
     '''
     if isinstance(gt, Tensor):
         gt, pred = gt.numpy(), pred.numpy()
-    gt   = gt.astype(np.int32).sum(1) >= 0.5
-    pred = pred.astype(np.int32).sum(1) >= 0.5
+    gt   = np.argmax(gt, axis=-1)
+    pred = np.argmax(pred, axis=-1)
     return (gt == pred).sum()
 
 def get_auc_precision_recall_AP_f1(gt: np.ndarray, pred: np.ndarray) -> \
@@ -79,8 +79,12 @@ class Callback:
     def update_best(self, best_loss: np.ndarray, best_criterion: np.ndarray) -> None:
         self.best_criterion = best_criterion
         self.best_loss = best_loss
+    
+    def get_best_loss(self):
+        return self.best_loss
 
-    def on_epoch_end(self, cfg: CfgNode, metrics: object, csv_path: str, model:nn.Module) -> int:
+    def on_epoch_end(self, cfg: CfgNode, metrics: object, csv_path: str, model:nn.Module, opt: object=None,
+                     scheduler:object=None, epoch: int=None) -> int:
         # ===============================================================================================
         #                                     Callback block
         # ===============================================================================================
@@ -107,15 +111,19 @@ class Callback:
         if test_epoch_loss < self.best_loss:
             self.best_loss = test_epoch_loss
             if not cfg.SOURCE.DEBUG:
-                torch.save(model.state_dict(), os.path.join(cfg.MODEL.CHECKPOINT_PATH, self.checkpoint_prefix+"best_loss.pth"))
+                torch.save(model.state_dict(), os.path.join(cfg.MODEL.CHECKPOINT_DIR, self.checkpoint_prefix+"best_loss.pth"))
             self.patience = 0
             update_loss = True
         criterion = metrics.metric_dict[self.model_selection_criterion][-1]
         if criterion >= self.best_criterion:
             self.best_criterion = criterion
             if not cfg.SOURCE.DEBUG:
-                torch.save(model.state_dict(), 
-                           os.path.join(cfg.MODEL.CHECKPOINT_PATH, 
+                torch.save({'model_state_dict': model.state_dict(),
+                            'opt_state_dict': opt.state_dict() if opt else {},
+                            'scheduler_state_dict': scheduler.state_dict() if scheduler else {},
+                            'epoch': epoch if epoch else 0,
+                            }, 
+                           os.path.join(cfg.MODEL.CHECKPOINT_DIR, 
                            self.checkpoint_prefix+f"best_{self.model_selection_criterion}.pth"))
             self.patience = 0
             update_criterion = True
