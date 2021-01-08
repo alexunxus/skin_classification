@@ -5,7 +5,6 @@
 # Project root
    |----tensorflow training
    |      |----train.py
-   |      |----bbox                      # prefetched bbox for training
    |      |----skin_model
    |               |----config.py        # config node file
    |               |----augment.py       # augmentation
@@ -16,12 +15,15 @@
    |               |----model.py         # resnet modules
    |               |----util.py          # common utility functions
    |
+   |----bbox                             # prefetched bbox for training
+   |
+   |----label/label.py                   # fetch labels from AetherSlide website
+   |
    |----tensorflow inference pipeline
    |      |----inference.py              # inference program
    |      |----inference_config/         # inference config
    |      |----result/                   # inference result
    |      |----recolor.py                # recolor inference slides(not used on newer version of AetherSlide)
-   |      |----label/label.py            # fetch labels from AetherSlide website
    |      |----postdb_modified.py        # send inference result to AetherSlide database
    |      |----pipeline_recolor.sh       # automatic recolor pipeline
    |
