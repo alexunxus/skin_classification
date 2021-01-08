@@ -76,11 +76,10 @@ _C.MODEL.LOAD_CSV          = False
 _C.MODEL.PATIENCE          = 5
 
 
-_C.MODEL.CHECKPOINT_DIR = "/workspace/skin/checkpoint/"
-_C.MODEL.RESULT_DIR     = "/workspace/skin/checkpoint/"
+_C.MODEL.CHECKPOINT_DIR = "/workspace/skin/torch_training/checkpoint/"
+_C.MODEL.RESULT_DIR     = "/workspace/skin/torch_training/checkpoint/"
 _C.MODEL.RESUME_FROM    = ''
 _C.MODEL.DEBUG          = False
-_C.MODEL.MODEL_DIR      = "/workspace/skin/inference_configs/"
 
 _C.METRIC = CN()
 _C.METRIC.MODEL_SELECTION_CRITERION = 'auc'
