@@ -1,4 +1,53 @@
 # Skin inflammatory pattern recognition project
+
+## Project Architecture
+```
+# Project root
+   |----tensorflow training
+   |      |----train.py
+   |      |----bbox                      # prefetched bbox for training
+   |      |----skin_model
+   |               |----config.py        # config node file
+   |               |----augment.py       # augmentation
+   |               |----contour_util.py  # draw contour for nuclear segmentation
+   |               |----customized_show_result.py  # draw contour for nuclear segmentation
+   |               |----dataloader.py    # tensorflow version dataloader 
+   |               |----eval.py          # evaluation
+   |               |----model.py         # resnet modules
+   |               |----util.py          # common utility functions
+   |
+   |----tensorflow inference pipeline
+   |      |----inference.py              # inference program
+   |      |----inference_config/         # inference config
+   |      |----result/                   # inference result
+   |      |----recolor.py                # recolor inference slides(not used on newer version of AetherSlide)
+   |      |----label/label.py            # fetch labels from AetherSlide website
+   |      |----postdb_modified.py        # send inference result to AetherSlide database
+   |      |----pipeline_recolor.sh       # automatic recolor pipeline
+   |
+   |----Second stage pattern recognizer by binary decision tree
+   |      |----decision_tree/
+   |
+   |----Pytorch training
+   |       |----train_pytorch.py
+   |       |----train_all_cross_valid    # parallelized cross validation model by splitting training slides
+   |       |----bbox/                    # prefetched bbox for training
+   |       |----checkpoint/              # model checkpoints
+   |       |----pytorch_model
+   |               |----config.py        # config node file
+   |               |----dataloader.py    # tensorflow version dataloader 
+   |               |----model_zoo.py     # resnet, efficientnet, SE-resnet modules
+   |               |----util.py          # common utility functions
+   |               |----loss.py          # loss functions, metrics
+   |               |----pipeline.py      # train, validation, test pipelines
+   |
+   |----Nuclear segmentation
+   |        |----roi/                    # nuclear segmentation by MMDedection model(source code from other project)
+   |        |----roi_result/             # inference result from pretrained MMDetection model
+   |        |----contour.py              # display contour on images
+   | 
+```
+
 ## Training
 Training config is in Module/config.py, the config file is written in yacs cnf node format.
 To read the config, one can call **get_cfg_defaults()**.
