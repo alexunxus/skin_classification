@@ -71,6 +71,7 @@ _C.MODEL.LEARNING_RATE = 3e-5 # 1e-4 for SGD
 _C.MODEL.USE_PRETRAIN = True
 _C.MODEL.NORM_USE          = "bn" # bn, gn
 _C.MODEL.OPTIMIZER         = "SGD" #"Adam", "SGD"
+_C.MODEL.SCHEDULER         = 'step' # 'cos_grad'
 _C.MODEL.LOAD_CSV          = False
 _C.MODEL.PATIENCE          = 5
 

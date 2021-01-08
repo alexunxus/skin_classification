@@ -182,6 +182,12 @@ class CustomModel(nn.Module):
             nn.Linear(in_features=1000, out_features=num_cls),
             nn.Softmax(dim=-1)
         )
+
+        if resume_from is not None and resume_from != '':
+            if os.path.isfile(resume_from):
+                raise ValueError(f'Path {resume_from} does not exist.')
+            model_state_dict = torch.load(resume_from)['model_state_dict']
+            self.load_state_dict(model_state_dict)
     
     def forward(self, x:Tensor) -> Tensor:
         x = self.backbone(x)

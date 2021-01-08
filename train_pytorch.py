@@ -109,11 +109,11 @@ if __name__ == "__main__":
                                 lr=cfg.MODEL.LEARNING_RATE)
     scheduler = build_scheduler(type='step', optimizer=optimizer, cfg=cfg)
     
-    # criterion: BCE loss for multilabel tensor with shape (BATCH_SIZE, 5)
+    # criterion: BCE loss for multilabel tensor with shape (BATCH_SIZE, 10)
     criterion = get_bceloss()
     
     # prepare training and testing loss
-    loss_acc_metric = Metric(cfg.METRIC.KEYS)
+    loss_acc_metric   = Metric(cfg.METRIC.KEYS)
     csv_path          = os.path.join(cfg.MODEL.CHECKPOINT_DIR, checkpoint_prefix+"_loss.csv")
     best_criterion, best_loss, resume_from_epoch = loss_acc_metric.load_metrics(csv_path, 
                                                 resume=cfg.MODEL.LOAD_CSV, 
@@ -127,6 +127,7 @@ if __name__ == "__main__":
     # training pipeline
     if cfg.DATASET.USE_CROSS_VALID and rank == 0:
         print("==============Start training=================")
+    
     for epoch in range(0, cfg.MODEL.EPOCHS):  # loop over the dataset multiple times
         # update scheduler  
         if epoch < resume_from_epoch:
