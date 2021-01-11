@@ -1,18 +1,53 @@
 import os
 import numpy as np
+from sklearn.metrics import cohen_kappa_score, confusion_matrix, average_precision_score, auc, roc_curve
+from yacs.config import CfgNode
+import typing
+from typing import Tuple, Union, List, Callable
+
+# torch
 import torch
 from torch import Tensor
 from torch.nn import BCELoss
 from torch import nn
-from sklearn.metrics import cohen_kappa_score, confusion_matrix, average_precision_score, auc, roc_curve
+import torch.nn.functional as F
 
-from yacs.config import CfgNode
-import typing
-from typing import Tuple, Union
 
 def get_bceloss():
     # binary cross entropy loss
     return BCELoss()
+
+
+
+class FocalLoss2d(nn.modules.loss._WeightedLoss):
+
+    def __init__(self, gamma=2, weight=None, size_average=None, ignore_index=-100,
+                 reduce=None, reduction='mean', balance_param=10):
+        super(FocalLoss2d, self).__init__(weight, size_average, reduce, reduction)
+        self.gamma = gamma
+        self.weight = weight
+        self.size_average = size_average
+        self.ignore_index = ignore_index
+        self.balance_param = balance_param
+
+    def forward(self, input, target):
+        
+        # inputs and targets are assumed to be BatchxClasses
+        assert len(input.shape) == len(target.shape)
+        assert input.size(0) == target.size(0)
+        assert input.size(1) == target.size(1)
+        
+        weight = (self.weight)
+           
+        # compute the negative likelyhood
+        logpt = - F.binary_cross_entropy(input, target, weight=weight, reduction=self.reduction)
+        pt = torch.exp(logpt)
+
+        # compute the loss
+        focal_loss = -( (1-pt)**self.gamma ) * logpt
+        balanced_focal_loss = self.balance_param * focal_loss
+        return balanced_focal_loss
+
 
 def kappa_score(gt: np.ndarray, pred: np.ndarray) -> np.ndarray:
     # quadratic weighted kappa

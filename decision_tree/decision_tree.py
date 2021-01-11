@@ -10,8 +10,9 @@ import numpy as np
 import pandas as pd
 import cv2
 from hephaestus.data.ndpwrapper_v2 import Slide_ndpread
-from Module.config import get_cfg_defaults
-from Module.util import *
+from tf_training.skin_model.config import get_cfg_defaults
+from tf_training.skin_model.util import compute_cluster_distribution, DFS, compute_areas, \
+  segment_region, df2thumbnail
 
 COLOR_TABLE = {
     0:{"class": "Background",
@@ -46,7 +47,7 @@ COLOR_TABLE = {
       },
 }
 
-class FeatureMgr:
+class FeatureExtractor:
     def __init__(self, csv_path, slides, groundtruth_path):
         self.csv_path = csv_path
         self.slides = slides
@@ -110,9 +111,9 @@ class FeatureMgr:
 
 if __name__ == "__main__":
   cfg = get_cfg_defaults()
-  csv_path = "/workspace/skin/result/inference_CSV/"
+  csv_path = "/workspace/skin/tf_training/result/inference_CSV/"
   groundtruth_path = "/workspace/skin/decision_tree/data.csv"
   slides = cfg.DATASET.VALID_SLIDE + cfg.DATASET.TRAIN_SLIDE +['2019-10-30 02.13.08.ndpi']
-  featureMgr = FeatureMgr(csv_path, slides, groundtruth_path)
+  featureExtractor = FeatureExtractor(csv_path, slides, groundtruth_path)
 
-  featureMgr.load_label()
+  featureExtractor.load_label()

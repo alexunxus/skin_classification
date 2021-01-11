@@ -2,13 +2,13 @@ from yacs.config import CfgNode as CN
 
 _C = CN() # Node, lv0
 _C.SYSTEM = CN() # None, lv1
-_C.SYSTEM.DEVICES = [0, 2, 3, 4]
+_C.SYSTEM.DEVICES = [0] # 0, 2, 3, 4
 
 _C.SOURCE = CN()
 _C.SOURCE.DEBUG= False
 
 _C.DATASET = CN()
-_C.DATASET.USE_CROSS_VALID = True
+_C.DATASET.USE_CROSS_VALID = False
 _C.DATASET.SLIDE_DIR = "/mnt/cephrbd/data/A19001_NCKU_SKIN/Image/20191106/"
 _C.DATASET.LABEL_PATH = "/workspace/skin/label/label.json" #"/mnt/cephrbd/data/A19001_NCKU_SKIN/Meta/key-image-locations.json"
 _C.DATASET.BBOX_PATH  = "/workspace/skin/bbox/"
@@ -54,10 +54,6 @@ _C.DATASET.CLASS_MAP = [
     [41, 7, 2, "epidermis"                ], # "epidermis"
     [202,8, 1, "skeletal muscle"          ], # "skeletal muscle"
     [55, 9, 1, "blood vessels"            ], # "blood vessels"
-    #[226,10, 1, "nerve fiber"],# "nerve fiber"
-    #[80, 11, 1, "smooth muscle"],# "smooth muscle"
-    #[44, 12, 1, "unspecified"],# "unspecified"
-    #[220,13, 1, "ROI"],# "ROI"   
 ]
 
 # complete one: int_to_class = [225, 56, 43, 53, 45, 42, 54, 41, 55, 202, 226, 80, 44, 220]
@@ -67,7 +63,7 @@ _C.MODEL = CN()
 _C.MODEL.BACKBONE = "r101" #'r50', 'r101', 'e-b0', 'e-b1', 'se-r101', 'se-r50'
 _C.MODEL.BATCH_SIZE = 16
 _C.MODEL.EPOCHS = 50
-_C.MODEL.LEARNING_RATE = 3e-5 # 1e-4 for SGD
+_C.MODEL.LEARNING_RATE = 1e-4 # for pytorch, lr should be greater.
 _C.MODEL.USE_PRETRAIN = True
 _C.MODEL.NORM_USE          = "bn" # bn, gn
 _C.MODEL.OPTIMIZER         = "SGD" #"Adam", "SGD"

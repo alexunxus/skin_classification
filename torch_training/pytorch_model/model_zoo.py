@@ -1,3 +1,5 @@
+import os
+
 from warmup_scheduler import GradualWarmupScheduler
 from torchvision.models import resnet50, resnet101, densenet
 from efficientnet_pytorch import EfficientNet
@@ -174,20 +176,29 @@ opt_map = {
     'adam': torch.optim.Adam,
 }
 
+def init_weights(m):
+    if type(m) == nn.Linear or type(m) == nn.Conv2d:
+        torch.nn.init.xavier_uniform_(m.weight)
+        m.bias.data.fill_(0.01)
+
 class CustomModel(nn.Module):
     def __init__(self, backbone:str, num_cls:int = 10, resume_from:str=None, norm:str='bn'):
         super(CustomModel, self).__init__()
         self.backbone = net_map[backbone]
         self.top = nn.Sequential(
             nn.Linear(in_features=1000, out_features=num_cls),
+            nn.ReLU(inplace=True),
+            nn.Linear(in_features=num_cls, out_features=num_cls),
             nn.Softmax(dim=-1)
         )
 
         if resume_from is not None and resume_from != '':
-            if os.path.isfile(resume_from):
+            if not os.path.isfile(resume_from):
                 raise ValueError(f'Path {resume_from} does not exist.')
-            model_state_dict = torch.load(resume_from)['model_state_dict']
+            model_state_dict = torch.load(resume_from)# ['model_state_dict']
             self.load_state_dict(model_state_dict)
+        else:
+            self.top.apply(init_weights)
     
     def forward(self, x:Tensor) -> Tensor:
         x = self.backbone(x)

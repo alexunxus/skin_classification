@@ -73,7 +73,6 @@ _C.DATASET.HIST_NAME = [
 _C.DATASET.INT_TO_CLASS = [225, 56, 43, 53, 45, 42, 54, 41, 202, 55]
 
 _C.MODEL = CN()
-_C.MODEL.LIBRARY = "tensorflow" # "pytorch"
 _C.MODEL.BACKBONE = "R-50-xt" #"R-101-v1"# "R-50-v1"
 _C.MODEL.BATCH_SIZE = 8
 _C.MODEL.EPOCHS = 50
@@ -86,10 +85,10 @@ _C.MODEL.LOAD_WEIGHT = False
 # new function: multiscale learning
 _C.MODEL.MULTISCALE = 0#4096
 
-_C.MODEL.CHECKPOINT_DIR = "/workspace/skin/checkpoint/"
-_C.MODEL.RESULT_DIR     = "/workspace/skin/checkpoint/"
+_C.MODEL.CHECKPOINT_DIR = "/workspace/skin/tf_training/checkpoint/"
+_C.MODEL.RESULT_DIR     = "/workspace/skin/tf_training/checkpoint/"
 _C.MODEL.DEBUG          = False
-_C.MODEL.MODEL_DIR      = "/workspace/skin/inference_configs/"
+_C.MODEL.MODEL_DIR      = "/workspace/skin/first_stage_inference/inference_configs/"
 
 def get_cfg_defaults():
   """Get a yacs CfgNode object with default values for my_project."""

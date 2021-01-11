@@ -25,10 +25,10 @@ def train(cfg, model: nn.Module, optimizer: object, train_loader: dataloader, cr
     predictions   = []
     groundtruth   = []
 
-    if cfg.DATASET.USE_CROSS_VALID and MPI.COMM_WORLD.Get_rank() == 0:
-        pbar = tqdm(enumerate(train_loader, 0))
-    else:
+    if cfg.DATASET.USE_CROSS_VALID and MPI.COMM_WORLD.Get_rank() != 0:
         pbar = enumerate(train_loader, 0)
+    else:
+        pbar = tqdm(enumerate(train_loader, 0))
     
     # tracking data time and GPU time and print them on tqdm bar.
     end_time = time.time()
@@ -65,7 +65,7 @@ def train(cfg, model: nn.Module, optimizer: object, train_loader: dataloader, cr
         total_loss    += running_loss
         train_correct += correct(predictions[-1], groundtruth[-1])
 
-        if cfg.DATASET.USE_CROSS_VALID and MPI.COMM_WORLD.Get_rank() == 0:
+        if (cfg.DATASET.USE_CROSS_VALID and MPI.COMM_WORLD.Get_rank() == 0) or not cfg.DATASET.USE_CROSS_VALID:
             pbar.set_postfix_str(f"[{epoch}/{cfg.MODEL.EPOCHS}] [{i+1}/{len(train_loader)} "+
                                  f"training loss={running_loss:.4f}, data time = {data_time:.4f}, gpu time = {gpu_time:.4f}")
         end_time = time.time()
@@ -110,7 +110,13 @@ def validation(cfg, model: nn.Module, test_loader: dataloader, criterion: Callab
 
     if save_pred:
         gt_pred_arr = np.stack([groundtruth, predictions], axis=0)
-        with open(cfg.MODEL.CHECKPOINT_PATH + 'prediction_arr_valid.npy', 'wb') as f:
+        save_name = f"{cfg.MODEL.BACKBONE}_{cfg.DATASET.PATCH_SIZE}_"
+        if cfg.DATASET.USE_CROSS_VALID:
+            comm = MPI.COMM_WORLD
+            rank = comm.Get_rank()
+            save_name += f'fold{rank}_'
+        save_name += f'test_loss.npy'
+        with open(cfg.MODEL.CHECKPOINT_DIR + save_name, 'wb') as f:
             np.save(f, gt_pred_arr)
 
     test_epoch_loss = test_total_loss/len(test_loader)
@@ -123,24 +129,23 @@ def validation(cfg, model: nn.Module, test_loader: dataloader, criterion: Callab
     loss_acc_metric.print_summary(epoch=epoch, total_epoch=cfg.MODEL.EPOCHS, 
                                   lr= optimizer.param_groups[0]['lr'] if optimizer else -1)
     
+    return groundtruth, predictions
+    
 
 def test(cfg, test_loader: dataloader, model: nn.Module, criterion: Callable)->None:
-    checkpoint_prefix = f"{cfg.MODEL.BACKBONE}_{cfg.DATASET.TILE_SIZE}_{cfg.DATASET.PATCH_SIZE}"
-    
-    # prepare resnet50, resume from checkpoint
-    print("==============Building model=================")
-    best_loss_path = os.path.join(cfg.MODEL.CHECKPOINT_PATH, checkpoint_prefix+'best_loss.pth')
-    model.resume_from_path(best_loss_path)
+    checkpoint_prefix = f"{cfg.MODEL.BACKBONE}_{cfg.DATASET.PATCH_SIZE}_"
+    if cfg.DATASET.USE_CROSS_VALID:
+        comm = MPI.COMM_WORLD
+        checkpoint_prefix += f'{comm.Get_rank()}_'
 
-    if torch.cuda.device_count() > 1:
-        print(f"Using {torch.cuda.device_count()} GPUs...")
-        model = nn.DataParallel(model)
     model = model.cuda()
 
     # prepare training and testing loss
     loss_acc_metric = Metric([key for key in cfg.METRIC.KEYS if 'train' not in key])
-    csv_path               = os.path.join(cfg.MODEL.CHECKPOINT_PATH, checkpoint_prefix+"_test_loss.csv")
+    csv_path               = os.path.join(cfg.MODEL.CHECKPOINT_DIR, checkpoint_prefix+"test_loss.csv")
     
      # test pipeline
-    validation(cfg, model, test_loader, criterion, 0, loss_acc_metric, save_pred=True)
+    groundtruth, predictions = validation(cfg, model, test_loader, criterion, 0, loss_acc_metric, save_pred=True)
     loss_acc_metric.save_metrics(csv_path)
+
+    return groundtruth, predictions

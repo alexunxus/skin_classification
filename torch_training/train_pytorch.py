@@ -15,7 +15,7 @@ from pytorch_model.dataloader import Dataset, skin_augment_fn, imagenet_preproc
 from pytorch_model.config     import get_cfg_defaults
 from pytorch_model.pipeline   import train, validation, test
 from pytorch_model.util       import Metric, cross_valid, check_train_not_zero
-from pytorch_model.loss       import get_bceloss, Callback
+from pytorch_model.loss       import get_bceloss, Callback, FocalLoss2d
 from pytorch_model.model_zoo  import CustomModel, build_optimizer, build_scheduler
 
 if __name__ == "__main__":
@@ -109,8 +109,9 @@ if __name__ == "__main__":
                                 lr=cfg.MODEL.LEARNING_RATE)
     scheduler = build_scheduler(type='step', optimizer=optimizer, cfg=cfg)
     
-    # criterion: BCE loss for multilabel tensor with shape (BATCH_SIZE, 10)
-    criterion = get_bceloss()
+    # criterion: BCE loss or multilabel focal loss
+    # criterion = get_bceloss()
+    criterion = FocalLoss2d(weight=torch.tensor([float(item[2]) for item in cfg.DATASET.CLASS_MAP]).cuda())
     
     # prepare training and testing loss
     loss_acc_metric   = Metric(cfg.METRIC.KEYS)
@@ -153,31 +154,3 @@ if __name__ == "__main__":
     
     if cfg.DATASET.USE_CROSS_VALID and rank == 0:
         print('Finished Training')
-    
-
-    # Test block
-    '''print("==============Start testing==================")
-    # prepare train, test dataloader
-    test_dataset  = TileDataset(img_dir    =cfg.DATASET.TEST_IMG_DIR, 
-                                json_dir   =cfg.DATASET.TEST_BBOX, 
-                                patch_size =cfg.DATASET.PATCH_SIZE, 
-                                patch_dir  =cfg.DATASET.TEST_PATCH_DIR,
-                                resize_ratio=cfg.DATASET.RESIZE_RATIO,
-                                tile_size  =cfg.DATASET.TILE_SIZE, 
-                                is_test    =True,
-                                aug        =None, 
-                                preproc    =get_resnet_preproc_fn(), 
-                                debug      = cfg.SOURCE.DEBUG)
-                        
-    test_loader  = DataLoader(test_dataset , 
-                              batch_size=cfg.MODEL.BATCH_SIZE, #cfg.MODEL.BATCH_SIZE//4, 
-                              shuffle=False, 
-                              num_workers=4,
-                              drop_last=False
-                              )
-
-    test(cfg, test_loader, model, criterion)
-    
-    print('Finished Testing')'''
-    
-    
