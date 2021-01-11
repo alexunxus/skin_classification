@@ -78,7 +78,7 @@ The inference result(a chunk of png files) will be stored in result/inference_CS
 plot and save the ROC, AUC curves as well as confusion matrix, run inferenceLab.ipynb by loading the
 corresponding weight(stored in checkpoint/*.h)
 
-![image info](/result/inference_CSV/2019-10-30\ 01.59.42/binary_map/alpha_thres-0.100.png)
+![image info](./tf_training/result/inference_CSV/2019-10-30\ 01.59.42/binary_map/alpha_thres-0.100.png)
 
 ### Recolor the image mask
 Then recolor the images by  
@@ -93,7 +93,7 @@ or you can manually decide which slide to recolor
 	--slide_name SLIDE_NAME"
 ```
 
-![image info](./result/inference_CSV/2019-10-30\ 01.59.42/alpha_thres-0.000.png)
+![image info](./tf_training/result/inference_CSV/2019-10-30\ 01.59.42/alpha_thres-0.000.png)
 
 ### Post database
 move the recolored image folders to */mnt/ai_result/research/A19001_NCKU_SKIN/* and the go to this folder.
