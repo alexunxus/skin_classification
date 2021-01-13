@@ -15,7 +15,7 @@ from pytorch_model.dataloader import Dataset, skin_augment_fn, imagenet_preproc
 from pytorch_model.config     import get_cfg_defaults
 from pytorch_model.pipeline   import train, validation, test
 from pytorch_model.util       import Metric, cross_valid, check_train_not_zero
-from pytorch_model.loss       import get_bceloss, Callback
+from pytorch_model.loss       import get_bceloss, Callback, FocalLoss2d
 from pytorch_model.model_zoo  import CustomModel, build_optimizer, build_scheduler
 
 if __name__ == "__main__":
@@ -69,7 +69,7 @@ if __name__ == "__main__":
         print("==============Building model=================")
     model = CustomModel(backbone=cfg.MODEL.BACKBONE, 
                         num_cls=len(cfg.DATASET.INT_TO_CLASS), 
-                        resume_from=cfg.MODEL.RESULT_DIR+checkpoint_prefix+'best_loss.pth',
+                        resume_from=cfg.MODEL.RESULT_DIR+checkpoint_prefix+'best_loss_acc89.pth',
                         norm=cfg.MODEL.NORM_USE)
     #if torch.cuda.device_count() > 1:
     #    print(f"Using {torch.cuda.device_count()} GPUs...")
@@ -80,7 +80,7 @@ if __name__ == "__main__":
         model = model.cuda()
     
     # criterion: BCE loss for multilabel tensor with shape (BATCH_SIZE, 10)
-    criterion = get_bceloss()
+    criterion = FocalLoss2d(weight=torch.tensor([float(item[2]) for item in cfg.DATASET.CLASS_MAP]).cuda())
     
     # training pipeline
     if cfg.DATASET.USE_CROSS_VALID and rank == 0:

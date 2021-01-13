@@ -91,7 +91,7 @@ def validation(cfg, model: nn.Module, test_loader: dataloader, criterion: Callab
     model.eval()
 
     pbar = test_loader
-    if cfg.DATASET.USE_CROSS_VALID and MPI.COMM_WORLD.Get_rank == 0:
+    if not cfg.DATASET.USE_CROSS_VALID or MPI.COMM_WORLD.Get_rank == 0:
         pbar = tqdm(test_loader)
     
     for imgs, labels in pbar:

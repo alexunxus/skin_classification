@@ -63,7 +63,7 @@ _C.MODEL = CN()
 _C.MODEL.BACKBONE = "r101" #'r50', 'r101', 'e-b0', 'e-b1', 'se-r101', 'se-r50'
 _C.MODEL.BATCH_SIZE = 16
 _C.MODEL.EPOCHS = 50
-_C.MODEL.LEARNING_RATE = 1e-4 # for pytorch, lr should be greater.
+_C.MODEL.LEARNING_RATE = 1e-2 # for pytorch, lr should be greater.
 _C.MODEL.USE_PRETRAIN = True
 _C.MODEL.NORM_USE          = "bn" # bn, gn
 _C.MODEL.OPTIMIZER         = "SGD" #"Adam", "SGD"
@@ -81,6 +81,40 @@ _C.METRIC = CN()
 _C.METRIC.MODEL_SELECTION_CRITERION = 'auc'
 _C.METRIC.KEYS = ['test_acc','train_acc', 'test_losses','train_losses', 
                   'auc', 'precision','recall', 'AP', 'f1']
+
+_C.INFERENCE = CN()
+_C.INFERENCE.MODEL_DIR = "/workspace/skin/tf_training/checkpoint/R-101-v1_512_E50_cls10_AUG.h5_01"
+_C.INFERENCE.RESULT_DIR =  "/workspace/skin/tf_training/result/"
+_C.INFERENCE.BATCH_SIZE =  32
+_C.INFERENCE.FIVE_CROP =  True
+_C.INFERENCE.INFERENCE_DIR = '/mnt/cephrbd/data/A19001_NCKU_SKIN/Image/20210107/'
+_C.INFERENCE.INFERENCE_FILES: [
+    '17-D01434.ndpi',
+    '18-D03693.ndpi',
+    '19-011040.ndpi',
+    '19-D01869.ndpi',
+    '19-D02531.ndpi',
+    '20-000077.ndpi',
+    '18-D01424.ndpi',
+    '19-008222.ndpi',
+    '19-D00935.ndpi',
+    '19-D01869_DX1.ndpi',
+    '19-D03012.ndpi',
+    '20-017360.ndpi',
+    '18-D02833.ndpi',
+    '19-009291.ndpi',
+    '19-D01068.ndpi',
+    '19-D02212.ndpi',
+    '19-D03071.ndpi',
+    '20-020112.ndpi',
+    '18-D03211.ndpi',
+    '19-010228.ndpi',
+    '19-D01315.ndpi',
+    '19-D02345.ndpi',
+    '19-D03132.ndpi',
+    '20-021357.ndpi',
+]
+
 
 def get_cfg_defaults():
   """Get a yacs CfgNode object with default values for my_project."""
