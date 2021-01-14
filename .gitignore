@@ -6,3 +6,4 @@ checkpoint/
 *.so
 *.pyc
 *.ipynb
+*.h5

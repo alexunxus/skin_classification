@@ -44,16 +44,16 @@ _C.DATASET.AUGMENT = True
 _C.DATASET.PREPROC = True
 
 _C.DATASET.CLASS_MAP = [
-    [225,0, 1, "background"               ], # "background"
-    [56, 1, 2, "inflammatory infiltration"], # "inflammatory infiltration"
-    [43, 2, 1, "adipose tissue"           ], # "adipose tissue"
-    [53, 3, 1, "sweat gland"              ], # "sweat gland"
-    [45, 4, 2, "hair follicles"           ], # "hair follicles" 
-    [42, 5, 1, "dermis"                   ], # "dermis"
-    [54, 6, 1, "sebaceous gland"          ], # "sebaceous gland"
-    [41, 7, 2, "epidermis"                ], # "epidermis"
-    [202,8, 1, "skeletal muscle"          ], # "skeletal muscle"
-    [55, 9, 1, "blood vessels"            ], # "blood vessels"
+    [225,0, 1, "Background"               ], # "background"
+    [56, 1, 2, "Inflammatory_infiltration"], # "inflammatory infiltration"
+    [43, 2, 1, "Adipose_tissue"           ], # "adipose tissue"
+    [53, 3, 1, "Sweat_gland"              ], # "sweat gland"
+    [45, 4, 2, "Hair_follicles"           ], # "hair follicles" 
+    [42, 5, 1, "Dermis"                   ], # "dermis"
+    [54, 6, 1, "Sebaceous_gland"          ], # "sebaceous gland"
+    [41, 7, 2, "Epidermis"                ], # "epidermis"
+    [202,8, 1, "Skeletal_muscle"          ], # "skeletal muscle"
+    [55, 9, 1, "Blood_vessel"             ], # "blood vessels"
 ]
 
 # complete one: int_to_class = [225, 56, 43, 53, 45, 42, 54, 41, 55, 202, 226, 80, 44, 220]
@@ -83,12 +83,12 @@ _C.METRIC.KEYS = ['test_acc','train_acc', 'test_losses','train_losses',
                   'auc', 'precision','recall', 'AP', 'f1']
 
 _C.INFERENCE = CN()
-_C.INFERENCE.MODEL_DIR = "/workspace/skin/tf_training/checkpoint/R-101-v1_512_E50_cls10_AUG.h5_01"
-_C.INFERENCE.RESULT_DIR =  "/workspace/skin/tf_training/result/"
+_C.INFERENCE.WEIGHT = '/workspace/skin/torch_training/checkpoint/r101_512_best_loss.pth'#"/workspace/skin/tf_training/checkpoint/R-101-v1_512_E50_cls10_AUG.h5_01"
+_C.INFERENCE.RESULT_DIR =  '/workspace/skin/first_stage_inference/inference_result/'
 _C.INFERENCE.BATCH_SIZE =  32
 _C.INFERENCE.FIVE_CROP =  True
 _C.INFERENCE.INFERENCE_DIR = '/mnt/cephrbd/data/A19001_NCKU_SKIN/Image/20210107/'
-_C.INFERENCE.INFERENCE_FILES: [
+_C.INFERENCE.INFERENCE_FILES= [
     '17-D01434.ndpi',
     '18-D03693.ndpi',
     '19-011040.ndpi',

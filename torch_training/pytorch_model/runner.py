@@ -1,24 +1,27 @@
+from skimage.color import rgb2hsv
 import numpy as np
 import time
 import os
 from tqdm import tqdm
 import math
-from skimage.color import rgb2hsv
-from scipy import ndimage
+import typing
+from typing import Tuple, Callable, List, Optional
 
-# tensorflow
-from tensorflow.keras.utils import Sequence
+# torch
+from torch.utils.data import DataLoader
+import torch
+from torch import nn
 
 # customized libraries
 from hephaestus.data.ndpwrapper_v2 import Slide_ndpread
 
 class InfDataset:
     def __init__(self,
-                 slide_dir,
-                 slide_name,
-                 patch_size,
-                 preproc_fn,
-                 hsv_threshold=0.05):
+                 slide_dir: str,
+                 slide_name: List[str],
+                 patch_size: Tuple[int],
+                 preproc_fn: Callable, 
+                 hsv_threshold: Optional[float]=0.05):
         '''
         Arg: slide_dir: string, slide directory
              slide_name: string, slide name
@@ -85,11 +88,22 @@ class InfDataset:
         if not expand:
             self.object_mask = boolean_mask
             return
-        
-        # dilate the mask
-        struct2 = ndimage.generate_binary_structure(2, 2)
-        self.object_mask = ndimage.morphology.binary_dilation(boolean_mask, struct2).astype(np.bool)
-        
+        for w in range(boolean_mask.shape[1]):
+            meet = 0
+            for h in range(boolean_mask.shape[0]):
+                if boolean_mask[h, w] == 1:
+                    meet = 2
+                elif meet > 0:
+                    boolean_mask[h, w] = 1
+                    meet -= 1
+            meet = 0
+            for h in range(boolean_mask.shape[0])[::-1]:
+                if boolean_mask[h, w] == 1:
+                    meet = 2
+                elif meet > 0:
+                    boolean_mask[h, w] = 1
+                    meet -= 1
+        self.object_mask = boolean_mask
     
     def _get_crop_mask(self):
         '''
@@ -102,15 +116,13 @@ class InfDataset:
             self.five_crop_mask += np.pad(self.object_mask, dir, 'constant', constant_values=(0, 0))
     
     def __getitem__(self, idx):
-        self.cur_pos = idx
         h, w = int(self.coords[idx][0]*self.patch_size[1]), int(self.coords[idx][1]*self.patch_size[0])
-        img = self.this_slide.get_patch_at_level((w, h), self.patch_size).astype(np.float32)
-        
+        img = self.this_slide.get_patch_at_level((w, h), self.patch_size)/255.
+
+        img = np.transpose(img, (2, 0, 1)).astype(np.float32)/255.
+        img = torch.from_numpy(img)
         if self.preproc_fn is not None:
-            # tf resnet preproc requires input a np float array ranged (0, 255.)
-            img = self.preproc_fn(img)
-        
-        self.cur_pos = (self.cur_pos+1)%len(self)
+            img = self.preproc_fn(img)        
         return img, np.array(list(self.coords[idx]))
     
     def get_coords(self):
@@ -132,34 +144,6 @@ class InfDataset:
     def get_shape(self):
         ''' return the shape of the original slide'''
         return self.W, self.H
-    
-
-class InfLoader(Sequence):
-    def __init__(self,
-                dataset,
-                batch_size=32):
-        '''
-        Arg: dataset: inference dataset
-        batch_size: int, normally 32
-        '''
-        self.dataset = dataset
-        self.batch_size = batch_size
-    
-    def __getitem__(self, idx):
-        ''' get a batch of items '''
-        imgs      = []
-        poss      = []
-        for i in range(idx*self.batch_size, min((idx+1)*self.batch_size, len(self.dataset))):
-            img, pos = self.dataset[i]
-            imgs.append(img)
-            poss.append(pos)
-        imgs = np.array(imgs)
-        poss = np.array(poss)
-        return imgs, poss
-    
-    def __len__(self):
-        ''' return the ceiling of batches'''
-        return math.ceil(len(self.dataset)*1./self.batch_size)
 
 class InferenceRunner:
     def __init__(self, dataset, model, center_weight=2, batch_size=32):
@@ -176,8 +160,8 @@ class InferenceRunner:
         more spatial information and optimize the disparation of har follicles and epidermis.
         '''
         inference_dataset = dataset
-        inference_loader  = InfLoader(inference_dataset, batch_size)
-        self.output = model.predict(inference_loader, verbose=1, workers=5)
+        inference_loader  = DataLoader(inference_dataset, batch_size=batch_size, shuffle=False, drop_last=False, num_workers=4)
+        self.output = InferenceRunner.predict(model, inference_loader)
         self.coords = inference_dataset.get_coords()
         
         self.center_weight = center_weight
@@ -190,6 +174,18 @@ class InferenceRunner:
         background_mask = np.logical_not(self.object_mask)
         self.heatmap[background_mask, 0] = 1
         self.fill_in_probability()
+    
+    @staticmethod
+    def predict(model: nn.Module, loader: DataLoader):
+        ret = []
+        with torch.no_grad():
+            for imgs, labels in tqdm(loader):
+                imgs = imgs.cuda()
+                pred = model(imgs)
+                out  = pred.detach().cpu().numpy()
+                ret.append(out)
+        ret = np.concatenate(ret, axis=0)
+        return ret
         
     def fill_in_probability(self):
         '''
@@ -224,5 +220,5 @@ class InferenceRunner:
     def get_heatmap(self):
         ''' return a np array of heatmap (h, w, num_class)'''
         return self.heatmap
-        # return self.heatmap.reshape((-1, self.heatmap.shape[-1]))
+        #return self.heatmap.reshape((-1, self.heatmap.shape[-1]))
     

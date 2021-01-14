@@ -2,7 +2,7 @@ from yacs.config import CfgNode as CN
 
 _C = CN() # Node, lv0
 _C.SYSTEM = CN() # None, lv1
-_C.SYSTEM.DEVICES = [2]
+_C.SYSTEM.DEVICES = [1]
 _C.SYSTEM.USE_HOROVOD=False
 
 _C.DATASET = CN()
@@ -37,19 +37,19 @@ _C.DATASET.AUGMENT = True
 _C.DATASET.PREPROC = True
 
 _C.DATASET.CLASS_MAP = [
-    [225,0, 1, "background"               ], # "background"
-    [56, 1, 2, "inflammatory infiltration"], # "inflammatory infiltration"
-    [43, 2, 1, "adipose tissue"           ], # "adipose tissue"
-    [53, 3, 1, "sweat gland"              ], # "sweat gland"
-    [45, 4, 2, "hair follicles"           ], # "hair follicles" 
-    [42, 5, 1, "dermis"                   ], # "dermis"
-    [54, 6, 1, "sebaceous gland"          ], # "sebaceous gland"
-    [41, 7, 2, "epidermis"                ], # "epidermis"
-    [202,8, 1, "skeletal muscle"          ], # "skeletal muscle"
-    [55, 9, 1, "blood vessels"            ], # "blood vessels"
-    #[226,10, 1, "nerve fiber"],# "nerve fiber"
-    #[80, 11, 1, "smooth muscle"],# "smooth muscle"
-    #[44, 12, 1, "unspecified"],# "unspecified"
+    [225,0, 1, "Background"               ], # "background"
+    [56, 1, 2, "Inflammatory_infiltration"], # "inflammatory infiltration"
+    [43, 2, 1, "Adipose_tissue"           ], # "adipose tissue"
+    [53, 3, 1, "Sweat_gland"              ], # "sweat gland"
+    [45, 4, 2, "Hair_follicles"           ], # "hair follicles" 
+    [42, 5, 1, "Dermis"                   ], # "dermis"
+    [54, 6, 1, "Sebaceous_gland"          ], # "sebaceous gland"
+    [41, 7, 2, "Epidermis"                ], # "epidermis"
+    [202,8, 1, "Skeletal_muscle"          ], # "skeletal muscle"
+    [55, 9, 1, "Blood_vessel"             ], # "blood vessels"
+    #[226,10, 1, "Nerve"],# "nerve fiber"
+    #[80, 11, 1, "Smooth_muscle"],# "smooth muscle"
+    #[44, 12, 1, "Unspecified"],# "unspecified"
     #[220,13, 1, "ROI"],# "ROI"   
 ]
 _C.DATASET.HIST_NAME = [
@@ -73,7 +73,7 @@ _C.DATASET.HIST_NAME = [
 _C.DATASET.INT_TO_CLASS = [225, 56, 43, 53, 45, 42, 54, 41, 202, 55]
 
 _C.MODEL = CN()
-_C.MODEL.BACKBONE = "R-50-xt" #"R-101-v1"# "R-50-v1"
+_C.MODEL.BACKBONE = "R-101-v1" #"R-50-xt" "R-101-v1"# "R-50-v1"
 _C.MODEL.BATCH_SIZE = 8
 _C.MODEL.EPOCHS = 50
 _C.MODEL.LEARNING_RATE = 3e-5 # 1e-4 for SGD
@@ -88,7 +88,40 @@ _C.MODEL.MULTISCALE = 0#4096
 _C.MODEL.CHECKPOINT_DIR = "/workspace/skin/tf_training/checkpoint/"
 _C.MODEL.RESULT_DIR     = "/workspace/skin/tf_training/checkpoint/"
 _C.MODEL.DEBUG          = False
-_C.MODEL.MODEL_DIR      = "/workspace/skin/first_stage_inference/inference_configs/"
+
+_C.INFERENCE = CN()
+_C.INFERENCE.WEIGHT = "/workspace/skin/tf_training/R-101-v1_512_E50_cls10_AUG_PREPROC.h5"
+_C.INFERENCE.RESULT_DIR =  '/workspace/skin/first_stage_inference/inference_result/tf/'
+_C.INFERENCE.BATCH_SIZE =  32
+_C.INFERENCE.FIVE_CROP =  True
+_C.INFERENCE.INFERENCE_DIR = '/mnt/cephrbd/data/A19001_NCKU_SKIN/Image/20210107/'
+_C.INFERENCE.INFERENCE_FILES= [
+    '17-D01434.ndpi',
+    '18-D03693.ndpi',
+    '19-011040.ndpi',
+    '19-D01869.ndpi',
+    '19-D02531.ndpi',
+    '20-000077.ndpi',
+    '18-D01424.ndpi',
+    '19-008222.ndpi',
+    '19-D00935.ndpi',
+    '19-D01869_DX1.ndpi',
+    '19-D03012.ndpi',
+    '20-017360.ndpi',
+    '18-D02833.ndpi',
+    '19-009291.ndpi',
+    '19-D01068.ndpi',
+    '19-D02212.ndpi',
+    '19-D03071.ndpi',
+    '20-020112.ndpi',
+    '18-D03211.ndpi',
+    '19-010228.ndpi',
+    '19-D01315.ndpi',
+    '19-D02345.ndpi',
+    '19-D03132.ndpi',
+    '20-021357.ndpi',
+]
+
 
 def get_cfg_defaults():
   """Get a yacs CfgNode object with default values for my_project."""
