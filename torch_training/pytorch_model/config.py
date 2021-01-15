@@ -84,7 +84,7 @@ _C.METRIC.KEYS = ['test_acc','train_acc', 'test_losses','train_losses',
 
 _C.INFERENCE = CN()
 _C.INFERENCE.WEIGHT = '/workspace/skin/torch_training/checkpoint/r101_512_best_loss.pth'#"/workspace/skin/tf_training/checkpoint/R-101-v1_512_E50_cls10_AUG.h5_01"
-_C.INFERENCE.RESULT_DIR =  '/workspace/skin/first_stage_inference/inference_result/'
+_C.INFERENCE.RESULT_DIR =  '/workspace/skin/first_stage_inference/inference_result/torch/'
 _C.INFERENCE.BATCH_SIZE =  32
 _C.INFERENCE.FIVE_CROP =  True
 _C.INFERENCE.INFERENCE_DIR = '/mnt/cephrbd/data/A19001_NCKU_SKIN/Image/20210107/'

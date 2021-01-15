@@ -6,6 +6,7 @@ from tqdm import tqdm
 import math
 import typing
 from typing import Tuple, Callable, List, Optional
+from scipy import ndimage
 
 # torch
 from torch.utils.data import DataLoader
@@ -88,22 +89,10 @@ class InfDataset:
         if not expand:
             self.object_mask = boolean_mask
             return
-        for w in range(boolean_mask.shape[1]):
-            meet = 0
-            for h in range(boolean_mask.shape[0]):
-                if boolean_mask[h, w] == 1:
-                    meet = 2
-                elif meet > 0:
-                    boolean_mask[h, w] = 1
-                    meet -= 1
-            meet = 0
-            for h in range(boolean_mask.shape[0])[::-1]:
-                if boolean_mask[h, w] == 1:
-                    meet = 2
-                elif meet > 0:
-                    boolean_mask[h, w] = 1
-                    meet -= 1
-        self.object_mask = boolean_mask
+        # dilate the mask
+        struct2 = ndimage.generate_binary_structure(2, 2)
+        self.object_mask = ndimage.morphology.binary_dilation(boolean_mask, struct2).astype(np.bool)
+        
     
     def _get_crop_mask(self):
         '''
@@ -117,7 +106,7 @@ class InfDataset:
     
     def __getitem__(self, idx):
         h, w = int(self.coords[idx][0]*self.patch_size[1]), int(self.coords[idx][1]*self.patch_size[0])
-        img = self.this_slide.get_patch_at_level((w, h), self.patch_size)/255.
+        img = self.this_slide.get_patch_at_level((w, h), self.patch_size)
 
         img = np.transpose(img, (2, 0, 1)).astype(np.float32)/255.
         img = torch.from_numpy(img)

@@ -131,7 +131,7 @@ class Dataset:
         return len(self.bboxs_list)
 
 if __name__ == '__main__':
-    from config import get_cfg_defaults
+    from .config import get_cfg_defaults
     cfg = get_cfg_defaults()
     train_dataset = Dataset(slide_dir=cfg.DATASET.SLIDE_DIR,
                             target_slide_names = cfg.DATASET.TRAIN_SLIDE,
