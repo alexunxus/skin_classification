@@ -16,7 +16,7 @@ sys.path.append('../torch_training/')
 from pytorch_model.dataloader import skin_augment_fn, imagenet_preproc
 from pytorch_model.config     import get_cfg_defaults
 from pytorch_model.model_zoo  import CustomModel
-from pytorch_model.runner     import InferenceRunner, InfDataset, getwh
+from pytorch_model.runner     import InferenceRunner, InfDataset
 
 from tamsui_river.overlay_compressor import HeatmapCompressor
 
@@ -41,6 +41,7 @@ if __name__ == '__main__':
 
     model = prepare_model(cfg)
     model = model.cuda()
+    model.eval()
     
     # column names for output json file:
     columns = [item[3] for item in cfg.DATASET.CLASS_MAP]
