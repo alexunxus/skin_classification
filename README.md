@@ -11,7 +11,7 @@
    |               |----contour_util.py  # draw contour for nuclear segmentation
    |               |----customized_show_result.py  # draw contour for nuclear segmentation
    |               |----dataloader.py    # tensorflow version dataloader 
-   |               |----eval.py          # evaluation
+   |               |----eval.py          # inference tools, containing inference runner
    |               |----model.py         # resnet modules
    |               |----util.py          # common utility functions
    |
@@ -19,12 +19,12 @@
    |
    |----label/label.py                   # fetch labels from AetherSlide website
    |
-   |----tensorflow inference pipeline
-   |      |----inference.py              # inference program
-   |      |----inference_config/         # inference config
+   |----first stage inference pipeline
+   |      |----inference.py              # pytorch inference program
+   |      |----tf_inference.py           # tensorflow inference program
    |      |----result/                   # inference result
    |      |----recolor.py                # recolor inference slides(not used on newer version of AetherSlide)
-   |      |----postdb_modified.py        # send inference result to AetherSlide database
+   |      |----postdb.py                 # send inference result to AetherSlide database
    |      |----pipeline_recolor.sh       # automatic recolor pipeline
    |
    |----Second stage pattern recognizer by binary decision tree
@@ -33,8 +33,6 @@
    |----Pytorch training
    |       |----train_pytorch.py
    |       |----train_all_cross_valid    # parallelized cross validation model by splitting training slides
-   |       |----bbox/                    # prefetched bbox for training
-   |       |----checkpoint/              # model checkpoints
    |       |----pytorch_model
    |               |----config.py        # config node file
    |               |----dataloader.py    # tensorflow version dataloader 
@@ -42,6 +40,7 @@
    |               |----util.py          # common utility functions
    |               |----loss.py          # loss functions, metrics
    |               |----pipeline.py      # train, validation, test pipelines
+   |               |----runner.py        # inference runner, inference dataloader
    |
    |----Nuclear segmentation
    |        |----roi/                    # nuclear segmentation by MMDedection model(source code from other project)
@@ -50,69 +49,102 @@
    | 
 ```
 
-## Training
-Training config is in Module/config.py, the config file is written in yacs cnf node format.
-To read the config, one can call **get_cfg_defaults()**.
+## Data summary
+Our training data are from NCKU department of dermatology. There are 40 digital glasses slides of different inflammatory patterns, with 15 of them labelled with contours of 10 kinds of major histological tissue. The goal of this study is to use a two-staged model to classify the inflammatory pattern of digital dermatopathological slides. The first stage involves a patch-based feature extraction network trained from ResNet101, and the second stage we use human designed feature extraction criteria and binary decision tree to classify inflammatory patterns.  
 
-To start training the model, one should type
+### Slide format
+The digital slides are in `.ndpi` format, and we use openslide reader to fetch data from these ndpi files. 
+
+### Labels 
+In the first stage of our training pipeline, we classify every 512*512 patch to 10 common histology seen in dermatolopathology:
 ```
-    python3 train.py
-```
-
-The result checkpoint file and accuracy/loss information will be stored in checkpoint directory.
-During Training, the bbox information will be stored in directory bbox for convenience for future retreival(will not
-generate new bbox in runtime).
-
-## Inference
-Inference configuration is placed at inference_configs/config.yaml  
-One can change to other checkpoint .h file by modifying the config.yaml file.
-
-### Get probability map
-To start inferencing the model, type
-
-```
-    python3 inference.py
+    [0, "Background"               ]
+    [1, "Inflammatory_infiltration"]
+    [2, "Adipose_tissue"           ]
+    [3, "Sweat_gland"              ]
+    [4, "Hair_follicles"           ] 
+    [5, "Dermis"                   ]
+    [6, "Sebaceous_gland"          ]
+    [7, "Epidermis"                ]
+    [8, "Skeletal_muscle"          ]
+    [9, "Blood_vessel"             ]
 ```
 
-The inference result(a chunk of png files) will be stored in result/inference_CSV. If one wants to 
-plot and save the ROC, AUC curves as well as confusion matrix, run inferenceLab.ipynb by loading the
-corresponding weight(stored in checkpoint/*.h)
+Clinical doctors are requested to encircle contours containing only a king of these tissue from our AetherSlide viewer. The training patches are acquired by randomly select one bounding box whose center lies within the contour.  
 
-![image info](./tf_training/result/inference_CSV/2019-10-30\ 01.59.42/binary_map/alpha_thres-0.100.png)
-
-### Recolor the image mask
-Then recolor the images by  
-`./fast_recolor.sh`
-The recolor scheme is stored in recolor.py --> color_table(a dictinonary)
-
-
-or you can manually decide which slide to recolor
+In the second stage of our pipeline, the clinical doctors annotate the slide-level labels:
 ```
-    python3 recolor.py \
-	--mask_dir result/inference_CSV/ \
-	--slide_name SLIDE_NAME"
+    superficial_perivascular inflammation
+    superficial_and_deep_perivascular inflammation
+    Periadnexal inflammation
+    nodular inflammation
+    diffuse inflammation
+    vasculitis
+    folliculitis
+    septal_panniculitis
+    lobular_panniculitis,
 ```
-
-![image info](./tf_training/result/inference_CSV/2019-10-30\ 01.59.42/alpha_thres-0.000.png)
-
-### Post database
-move the recolored image folders to */mnt/ai_result/research/A19001_NCKU_SKIN/* and the go to this folder.
-```
-python3 postdb.py
-```
-
-### Automatic inference pipeline
-The above pipeline is summarized in a shell script, **pipeline_recolor.sh**
 
 ## Fetch contour result from research.aetherai.com
-go to label/ directory and run
+Simply go to `label/` directory and run
 ```
 python3 label.py 
 ```
 
-The latest contour result will be stored in label/label.json file.
+The latest contour result will be fetched from the AetherSlide website and stored in `label/label.json` file.
 
-## Decision tree 
+## Prefetch bounding box for training
+You should customize the training/test/validation datasets and balance the classes, saving the bbox in path `bbox/`. Since the generation of bbox involves checking if a random point  lies in a polygon, requiring huge CPU consumption. the bbox information will be 
+retreived directory from `bbox/`, saving a large amount of time for data loading.  
+
+
+## Pytorch/Tensorflow Training
+The training configs can be found in `torch_training/pytorch_model/config.py` or `tf_training/skin_model/config.py` , the config files are built in yacs config node format. To read the config, one can call **get_cfg_defaults()**.
+
+Before training your model, please modify the config file as your customized needs.
+```
+    # tensorflow training
+    cd tf_training/
+    python3 train.py
+
+    # pytorch training
+    cd torch_training
+    python3 train_pytorch.py
+```
+
+The result checkpoint files(in `.h5` format or `.pth`), accuracy/loss/AUC/precision/recall/f1 information will be stored in `./checkpoint/`.
+
+## First stage inference
+The inference pipeline are also written in both pytorch and tensorflow, which can be seen in `first_stage_inference/`. The inference configs are incorporated in the training configuration files `torch_training/pytorch_model/config.py` and `tf_training/skin_model/config.py`(see INFERENCE session in these files).
+
+```
+    python3 inference.py
+    python3 tf_inferenc.py
+```
+
+The inference results will be saved in `first_stage_inference/inference_result/tf/` or `first_stage_inference/inference_result/torch/` respectively. A json format `SAVE_DIR/SLIDE_NAME/mapping.json` file will be generated by compressing the resultant probability map. The above is the heatmap after decompression (the data range is within 0~9, since there are 10 classes)  
+
+![image info](./tf_training/result/inference_CSV/2019-10-30\ 01.59.42/binary_map/alpha_thres-0.100.png)
+
+One can also map the inference propability map to well-painted color images by 
+
+```
+    python recolor.py --root_dir first_stage_inference/inference_result/tf/ --result_dir first_stage_inference/inference_result/color_tf/
+```
+![image info](./first_stage_inference/inference_result/color_tf/17-D01434.png)
+![image info](./first_stage_inference/inference_result/color_tf/20-021357.png)
+![image info](./first_stage_inference/inference_result/color_tf/19-D00935.png)
+![image info](./first_stage_inference/inference_result/color_tf/19-D01068.png)
+![image info](./first_stage_inference/inference_result/color_tf/18-D02833.png)
+
+### Post database
+Simply modify the arguments `--replace_source, --replace_target, -- result_dir, --usrname, --password` for postdb.py, one can sent the 
+```
+python3 postdb.py
+```
+
+
+## Second stage inference: Decision tree 
 The decision tree in the second stage of the project is written in directory decision_tree/. Go to
 the above directory and run
 
