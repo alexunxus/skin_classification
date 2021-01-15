@@ -3,6 +3,10 @@
 ## Project Architecture
 ```
 # Project root
+   |----bbox                             # prefetched bbox for training
+   |
+   |----label/label.py                   # fetch labels from AetherSlide website
+   |
    |----tensorflow training
    |      |----train.py
    |      |----skin_model
@@ -15,9 +19,17 @@
    |               |----model.py         # resnet modules
    |               |----util.py          # common utility functions
    |
-   |----bbox                             # prefetched bbox for training
-   |
-   |----label/label.py                   # fetch labels from AetherSlide website
+   |----Pytorch training
+   |      |----train_pytorch.py
+   |      |----train_all_cross_valid     # parallelized cross validation model by splitting training slides
+   |      |----pytorch_model
+   |               |----config.py        # config node file
+   |               |----dataloader.py    # tensorflow version dataloader 
+   |               |----model_zoo.py     # resnet, efficientnet, SE-resnet modules
+   |               |----util.py          # common utility functions
+   |               |----loss.py          # loss functions, metrics
+   |               |----pipeline.py      # train, validation, test pipelines
+   |               |----runner.py        # inference runner, inference dataloader
    |
    |----first stage inference pipeline
    |      |----inference.py              # pytorch inference program
@@ -30,22 +42,10 @@
    |----Second stage pattern recognizer by binary decision tree
    |      |----decision_tree/
    |
-   |----Pytorch training
-   |       |----train_pytorch.py
-   |       |----train_all_cross_valid    # parallelized cross validation model by splitting training slides
-   |       |----pytorch_model
-   |               |----config.py        # config node file
-   |               |----dataloader.py    # tensorflow version dataloader 
-   |               |----model_zoo.py     # resnet, efficientnet, SE-resnet modules
-   |               |----util.py          # common utility functions
-   |               |----loss.py          # loss functions, metrics
-   |               |----pipeline.py      # train, validation, test pipelines
-   |               |----runner.py        # inference runner, inference dataloader
-   |
    |----Nuclear segmentation
-   |        |----roi/                    # nuclear segmentation by MMDedection model(source code from other project)
-   |        |----roi_result/             # inference result from pretrained MMDetection model
-   |        |----contour.py              # display contour on images
+   |      |----roi/                      # nuclear segmentation by MMDedection model(source code from other project)
+   |      |----roi_result/               # inference result from pretrained MMDetection model
+   |      |----contour.py                # display contour on images
    | 
 ```
 
