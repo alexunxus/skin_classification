@@ -40,9 +40,7 @@ for key in tqdm(target_dict.keys()):
         print(f"connection error: {key}")
         continue
 print(annotation_dict.keys())
-#print(annotation_dict["2019"].keys())
-#print(len(annotation_dict["2019"]["targets"]))
 
 import json
-with open('label.json', 'w') as fp:
+with open('label_0118.json', 'w') as fp:
     json.dump(annotation_dict, fp)

@@ -7,3 +7,5 @@ checkpoint/
 *.pyc
 *.ipynb
 *.h5
+train/
+test/
