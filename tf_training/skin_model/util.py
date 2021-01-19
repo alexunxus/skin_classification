@@ -165,15 +165,6 @@ def get_tissue_map(mask):
     labels, numL = label(mask)
     return labels, numL
 
-def region_linear_regression(regions):
-    # Arg: [(array x, array y)...]
-    # Return: format: [(a, b), (a', b')...], a is slope, b is intercept
-    regions = [segment for segment in regions if len(segment[0]) > 10]
-    regression_coefficients = []
-    for region in regions:
-        model = LinearRegression().fit(region[0].reshape((-1, 1)), region[1])
-        regression_coefficients.append([model.coef_[0], model.intercept_])
-    return regression_coefficients
 
 def find_nearest_dist_and_point(regions, centers):
     '''

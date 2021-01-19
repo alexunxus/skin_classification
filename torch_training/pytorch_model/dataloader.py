@@ -23,7 +23,7 @@ skin_augment_fn =  albumentations.Compose([
                            albumentations.VerticalFlip(p=0.5),
                            albumentations.HorizontalFlip(p=0.5),
                            albumentations.transforms.Rotate(limit=45, border_mode=cv2.BORDER_WRAP, p=0.5),
-                           #albumentations.imgaug.transforms.IAAAdditiveGaussianNoise(p=0.3),
+                           albumentations.imgaug.transforms.IAAAdditiveGaussianNoise(p=0.1),
                            #albumentations.augmentations.transforms.MultiplicativeNoise (multiplier=(0.95, 1.05), elementwise=True, p=0.5),
                            albumentations.augmentations.transforms.HueSaturationValue(hue_shift_limit=15, 
                                                                                       sat_shift_limit=15, 
