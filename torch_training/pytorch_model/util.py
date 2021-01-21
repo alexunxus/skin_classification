@@ -5,6 +5,10 @@ import os
 import json
 from skimage.color import rgb2hsv
 import skimage
+import cv2
+import matplotlib.path as mpltPath # check path
+import math
+from bresenham import bresenham
 import typing
 from typing import Tuple, Callable
 
@@ -163,7 +167,7 @@ def cross_valid(train_val_list:list, json_path:str, num_cls:int, id_map:dict, sp
     fold = get_k_fold(train_val_list, split_ratio)
     statistics, contour_len_stat = parse_labels(json_path, num_cls, id_map)
     while not check_train_not_zero(statistics, fold, num_cls):
-        fold = get_k_fold(train_val, seed=int(random.randint(1, 100000)))
+        fold = get_k_fold(train_val_list, seed=int(random.randint(1, 100000)))
     return fold
 
 def get_k_fold(train_val_list: list, split_ratio: int =0.25, seed: int = 65536):
@@ -238,6 +242,187 @@ def count_stat(statistics, keys, num_cls):
         ret += statistics[key]
     
     return ret
+
+def open_json(label_path):
+    with open(label_path) as f:
+        js = json.load(f)
+    return js, list(js.keys())
+
+def create_statistic_table(slides: list, js:dict, class_map:dict, extension:str='.ndpi') -> np.ndarray:
+    statistic_table = np.zeros((len(slides), len(class_map)), dtype=np.int32)
+    for idx, name in enumerate(slides):
+        targets = js[name.split(extension)[0]]['targets']
+        for target in targets:
+            if len(target['labels'])  == 0:
+                continue
+            if len(target['segments']) < 10:
+                continue
+            label = (target['labels'][0]['label'])
+
+            cls = -1
+            for i in range(len(class_map)):
+                if label == class_map[i][0]:
+                    cls = i
+                    break
+            if cls >= 0:
+                statistic_table[idx][cls] += 1
+    print(statistic_table)
+    return statistic_table
+
+def get_contour_frequency(statistics:np.ndarray) -> np.ndarray:
+    return np.sum(statistics, axis=0)
+
+def balance_contour(statistics: np.ndarray, fold: int=20) -> np.ndarray:
+    ret = np.ones(statistics.shape, dtype=np.float32)
+    ret = np.reciprocal(statistics + 1e-7)
+    ret *= (np.mean(statistics)*fold)
+    ret = ret.astype(np.int32)
+    return ret
+
+def print_sampling_method(contour_freq: np.ndarray, sample_freq: np.ndarray, class_map: dict)-> None:
+    for i in range(contour_freq.shape[0]):
+        print(f"[{i}]: {contour_freq[i]:>4} | {sample_freq[i]:>4} | {contour_freq[i]*sample_freq[i]} | {class_map[i][3]}")
+
+
+def dump_contours_labels(json_path:str, slide_name:str, interest_cls: list)-> list:
+    with open(json_path) as f:
+        js = json.load(f)
+    ret = []
+    targets = js[slide_name]['targets']
+    for target in targets:
+        if len(target['labels']) != 1:
+            continue
+        elif len(target['segments']) < 10:
+            continue
+        
+        label = target['labels'][0]['label']
+        if label not in interest_cls:
+            continue
+        segment = np.array(target['segments'], dtype=np.int32)
+        ret.append([segment, label])
+    del js
+    return ret
+
+def raytrace(A: np.ndarray, B: np.ndarray, mask_matrix: np.ndarray) -> None:
+    arr1 = [int(i) for i in np.floor(A)]
+    arr2 = [int(i) for i in np.floor(B)]
+    mask_matrix[arr1[1], arr1[0]] = mask_matrix[arr2[1], arr2[0]] = True
+    if arr1 == arr2:
+        return 
+    cells = list(bresenham(*arr1, *arr2))
+    for x, y in cells:
+        mask_matrix[y, x] = True
+    
+
+def contour_bound(contour: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    xmin, xmax = np.min(contour[:, 0]), np.max(contour[:, 0])
+    ymin, ymax = np.min(contour[:, 1]), np.max(contour[:, 1])
+    return (xmin, ymin, xmax-xmin, ymax-ymin)
+
+
+def normalize_contour(contour: np.ndarray, x:np.ndarray, y:np.ndarray, w:np.ndarray, h:np.ndarray)-> np.ndarray:
+    contour_norm = np.copy(contour).astype(np.float32)
+    contour_norm[:, 0] = (contour_norm[:, 0] - x)/w
+    contour_norm[:, 1] = (contour_norm[:, 1] - y)/h
+    return contour_norm
+
+def watershed(mask:np.ndarray)->np.ndarray:
+    dirs = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+    visited_map = np.pad(np.copy(mask), ((1, 1),(1, 1)), mode='constant', constant_values=False)
+    background_mask = np.zeros(visited_map.shape).astype(np.bool)
+    
+    visited_map[0, 0] = background_mask[0, 0] =  1
+    queue = [(0, 0)]
+    index = 0
+    
+    while(index < len(queue)):
+        x, y = queue[index]
+        for dx, dy in dirs:
+            if visited_map[y+dy, x+dx] == False:
+                visited_map[y+dy, x+dx] = background_mask[y+dy, x+dx] = True
+                queue.append((x+dx, y+dy))
+        index += 1
+    
+    return np.logical_not(background_mask[1:-1, 1:-1]).astype(np.uint8)*2-mask
+    
+
+def find_inside_tiles(contour_norm: np.ndarray, tile_sz = 10, epsilon=1e-4, debug=False
+    ) -> Tuple[np.ndarray, np.ndarray]:
+    mask = np.zeros((tile_sz, tile_sz), dtype=np.bool)
+    mesh = contour_norm * (tile_sz-epsilon)
+    
+    for i in range(mesh.shape[0]):
+        prev = mesh[i-1]
+        nex = mesh[i]
+        raytrace(prev, nex, mask)
+    
+    foreground = watershed(mask)
+    if debug:
+        print(mask)
+        print('--------------------------')
+        print(foreground)
+        print('--------------------------')
+        
+    return np.where(foreground > 0), foreground
+    
+def generate_from_foreground(tx, ty):
+    tile_no = random.randint(0, len(tx)-1)
+    dx, dy = random.uniform(0, 1), random.uniform(0, 1)
+    return tx[tile_no]+dx, ty[tile_no]+dy, tile_no
+
+def denorm(nx: np.ndarray, ny: np.ndarray, x: np.ndarray, y: np.ndarray, w: np.ndarray, h: np.ndarray):
+    return int((nx*w)+x), int((ny*h)+y)
+
+def find_n_point_inside(contour: np.ndarray, n: int, tile_sz: int=4):
+    bbox_shape = contour_bound(contour)
+    contour_norm = normalize_contour(contour, *bbox_shape)
+    (ty, tx), foreground = find_inside_tiles(contour_norm, tile_sz=tile_sz)
+    
+    ret = []
+    path_ = mpltPath.Path(contour, closed=True)
+    i = 0
+    while i< n:
+        nx, ny, tile_no = generate_from_foreground(tx, ty)
+        nx /= tile_sz
+        ny /= tile_sz
+        p = denorm(ny, nx, *bbox_shape)
+        if foreground[int(tx[tile_no]), int(ty[tile_no])] == 2:
+            ret.append(p)
+            i += 1
+        elif path_.contains_point(p):
+            ret.append(p)
+            i += 1
+    return ret
+
+def find_n_point_inside_robust(contour: np.ndarray, n: int):
+    x, y, w, h = contour_bound(contour)
+    
+    ret = []
+    path_ = mpltPath.Path(contour, closed=True)
+    i = 0
+    while i < n:
+        p = (random.randint(x, x+w), random.randint(y, y+h))
+        if path_.contains_point(p):
+            ret.append(p)
+            i+=1
+    return ret
+    
+def get_bbox_one_slide(slide_dir: str, sample_slide_name:str, sample_freq: dict, label_path:str, 
+                       id2cls: dict, patch_size:int, extension: str='.ndpi', robust: bool=False):
+    sample_label_contour_pairs = dump_contours_labels(json_path=label_path, 
+                                                      slide_name=sample_slide_name.split(extension)[0],
+                                                      interest_cls=id2cls.keys(),
+                                                     )
+    ret = []
+    for sample_contour, sample_label in sample_label_contour_pairs:
+        sample_cls = id2cls[sample_label]
+        if robust:
+            xy_pairs = find_n_point_inside_robust(sample_contour, n=sample_freq[sample_cls])
+        else:
+            xy_pairs = find_n_point_inside(sample_contour, n=sample_freq[sample_cls])
+        ret.extend([[x-patch_size//2, y-patch_size//2, sample_cls] for x, y in xy_pairs])
+    return ret
+
 
 if __name__ == '__main__':
     m = Metric()

@@ -4,8 +4,10 @@ import random
 import matplotlib.path as mpltPath
 import os
 import tensorflow as tf
+import typing
+from typing import Tuple, List, Optional
 
-def exist_file(path, prefix, suffix):
+def exist_file(path: str, prefix: str, suffix: str) -> bool:
     # return if the file in path have both prefix and suffix string
     files = os.listdir(path)
     for f in files:
@@ -50,7 +52,7 @@ def collect_histogram(_targets, label_dict, interest=None):
             label_dict[label]+=1
     return class_type
 
-def get_frequency_dict(label_dict, upsample=4):
+def get_frequency_dict(label_dict: dict, upsample: int =2) -> dict:
     # will adjust the number of each class to their mean * 10 * upsample ratio, defaut 40*mean
     mean = sum(label_dict.values())/len(label_dict)
     num_each_class = mean*10*upsample
@@ -62,13 +64,13 @@ def get_frequency_dict(label_dict, upsample=4):
     return dict(zip(key_list, val_list))
 
 
-def get_class_map(config_class_list):
+def get_class_map(config_class_list: list) -> dict:
     class_map = {}
     for tup in config_class_list:
         class_map[tup[0]] = tup[1]
     return class_map
 
-def get_bounding_box(center_point, boundary, size):
+def get_bounding_box(center_point, boundary: tuple, size: tuple):
     '''
     Arg:
         boundary format: (w ,h)

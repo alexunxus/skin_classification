@@ -11,7 +11,7 @@ _C.DATASET = CN()
 _C.DATASET.USE_CROSS_VALID = False
 _C.DATASET.SLIDE_DIR = "../train/"
 _C.DATASET.LABEL_PATH = "/workspace/skin/label/label_0118.json" #"/mnt/cephrbd/data/A19001_NCKU_SKIN/Meta/key-image-locations.json"
-_C.DATASET.BBOX_PATH  = "/workspace/skin/bbox/"
+_C.DATASET.BBOX_PATH  = "/workspace/skin/bbox/bbox_0121/"
 _C.DATASET.TRAIN_SLIDE = [
     "2019-10-30 02.03.40.ndpi",
     "2019-10-30 02.04.50.ndpi",

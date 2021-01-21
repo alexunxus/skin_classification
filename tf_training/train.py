@@ -7,7 +7,6 @@ import json
 import os
 import pandas as pd
 import tensorflow as tf
-import horovod.tensorflow.keras as hvd
 import numpy as np
 import argparse
 import shutil
@@ -22,6 +21,7 @@ if __name__ == "__main__":
     os.environ['CUDA_VISIBLE_DEVICES'] = device
 
     if cfg.SYSTEM.USE_HOROVOD:
+        import horovod.tensorflow.keras as hvd
         # Horovod: initialize Horovod.
         hvd.init()
         # Horovod: pin GPU to be used to process local rank (one GPU per process)
@@ -68,12 +68,12 @@ if __name__ == "__main__":
         print("======================")
         
     # frequency of each set of slide
-    upsample = 1 if cfg.DATASET.INPUT_SHAPE[0] >=1024 else 4
-    train_frequency = get_frequency_dict(train_histogram, upsample=upsample)
-    valid_frequency = get_frequency_dict(valid_histogram, upsample=upsample)
+    train_frequency = get_frequency_dict(train_histogram, upsample=2)
+    valid_frequency = get_frequency_dict(valid_histogram, upsample=2)
     if is_hvd_0:
         for key in train_histogram.keys():
-            print("{:}: {:4d} {:4d}".format(key, train_frequency[key], valid_frequency[key]) )
+            print(f'[{key:>2}]:, {train_frequency[key]:>4} {valid_frequency[key]:>4}')
+            # print("{:}: {:4d} {:4d}".format(key, train_frequency[key], valid_frequency[key]) )
         print("======================")
         
     # show total number of patches for each classes
@@ -185,8 +185,6 @@ if __name__ == "__main__":
     callbackLRscheduler = tf.keras.callbacks.LearningRateScheduler(scheduler)
 
     callbacks = [callbackEarlyStop, callbackLRscheduler]
-
-    model.summary()
 
     if cfg.SYSTEM.USE_HOROVOD:
         # Horovod: save checkpoints only on worker 0 to prevent other workers from corrupting them.
